@@ -245,22 +245,6 @@ public class AuthController {
     }
 
     /**
-     * Get users by department (Manager and Admin only)
-     */
-    @GetMapping("/users/department/{department}")
-    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<?> getUsersByDepartment(@PathVariable String department) {
-        try {
-            List<UserResponse> users = userService.getUsersByDepartment(department);
-            return ResponseEntity.ok(users);
-        } catch (Exception e) {
-            log.error("Error getting users by department: {}", department, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to get users by department"));
-        }
-    }
-
-    /**
      * Deactivate user account (Admin only)
      */
     @PutMapping("/users/{userId}/deactivate")
@@ -289,26 +273,6 @@ public class AuthController {
             log.error("Error activating user: {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to activate user"));
-        }
-    }
-
-    /**
-     * Check if user has required role or higher
-     */
-    @GetMapping("/users/{email}/has-role/{role}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> checkUserRole(@PathVariable String email, @PathVariable String role) {
-        try {
-            Role requiredRole = Role.fromString(role);
-            boolean hasRole = userService.hasRoleOrHigher(email, requiredRole);
-            return ResponseEntity.ok(Map.of("hasRole", hasRole));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Invalid role: " + role));
-        } catch (Exception e) {
-            log.error("Error checking user role for email: {}, role: {}", email, role, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to check user role"));
         }
     }
 
