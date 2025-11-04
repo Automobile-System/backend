@@ -24,7 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-
+/**
+ * Enhanced Authentication Service with enterprise-level security features
+ * - JWT token generation and validation
+ * - Refresh token rotation
+ * - Remember-me functionality
+ * - Account lockout mechanism
+ * - Login attempt tracking
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,11 +44,16 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
 
+    /**
+     * Authenticate user with email and password
+     * Implements account lockout and failed attempt tracking
+     */
     @Transactional
-    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
+    public LoginResult login(LoginRequest request, HttpServletRequest httpRequest) {
         String email = request.getEmail().toLowerCase().trim();
         
         log.info("Login attempt for email: {}", email);
+
 
         // Check if account is locked
         if (loginAttemptService.isAccountLocked(email)) {
@@ -75,6 +87,9 @@ public class AuthService {
                     request.isRememberMe()
             );
 
+            long expiresIn = jwtTokenProvider.getAccessTokenValidity();
+
+
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(
                     user,
                     request.isRememberMe(),
@@ -91,18 +106,28 @@ public class AuthService {
 
             log.info("Successful login for user: {}", email);
 
-            return LoginResponse.success(
-                    accessToken,
-                    refreshToken.getToken(),
-                    jwtTokenProvider.getAccessTokenValidity(),
-                    user.getId().toString(),
-                    user.getEmail(),
-                    user.getFirstName(),
-                    user.getLastName(),
-                    user.getRoles(),
-                    user.getLastLoginAt(),
-                    request.isRememberMe()
-            );
+            // Build response objects
+            LoginResponse response = LoginResponse.builder()
+                    .userId(user.getId().toString())
+                    .email(user.getEmail())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .roles(user.getRoles())
+                    .expiresIn(expiresIn)
+                    .lastLoginAt(user.getLastLoginAt())
+                    .rememberMe(request.isRememberMe())
+                    .message("Login successful")
+                    .build();
+
+            LoginTokens tokens = LoginTokens.builder()
+                    .accessToken(accessToken)
+                    .expiresIn(expiresIn)
+                    .build();
+
+            return LoginResult.builder()
+                    .response(response)
+                    .tokens(tokens)
+                    .build();
 
         } catch (BadCredentialsException ex) {
             log.warn("Failed login attempt for email: {} - Invalid credentials", email);

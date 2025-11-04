@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * JWT Authentication Filter - Validates JWT tokens on each request
@@ -39,12 +40,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             // Extract JWT token from request header
-            String jwt = extractJwtFromCookie(request);
+            String jwt = extractJwtFromCookies(request);
 
-            if(jwt!=null && jwtTokenProvider.validateToken(jwt)){
+            if (jwt!=null && jwtTokenProvider.validateToken(jwt)) {
+                // Extract user email from token
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
+
+                // Load user details
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
+                // Create authentication token
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -52,10 +57,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 userDetails.getAuthorities()
                         );
 
+                // Set additional details
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // Set authentication in security context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("Authenticated user from cookie: {}", email);
+                log.debug("Successfully authenticated user: {} with roles: {}", 
+                        email, userDetails.getAuthorities());
             }
         } catch (Exception ex) {
             log.error("Cannot set user authentication: {}", ex.getMessage());
@@ -67,19 +76,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extract JWT token from Authorization header
+     * Extract JWT token from HttpOnly cookie named "accessToken"
      */
-    private String extractJwtFromCookie(HttpServletRequest request) {
-        if(request.getCookies()!=null){
-            for(Cookie cookie :request.getCookies()){
-                if("accessToken".equals(cookie.getName())){
-                    return cookie.getValue();
-                }
-            }
+    private String extractJwtFromCookies(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
         }
-        return null;
-    }
 
+        return Arrays.stream(request.getCookies())
+                .filter(cookie -> "accessToken".equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
+    }
     /**
      * Skip filter for public URLs
      */
