@@ -1,8 +1,10 @@
 package com.TenX.Automobile.config;
 
-import java.util.Arrays;
-import java.util.List;
-
+import com.TenX.Automobile.security.JwtAuthenticationFilter;
+import com.TenX.Automobile.security.constants.SecurityConstants;
+import com.TenX.Automobile.security.jwt.JwtTokenProvider;
+import com.TenX.Automobile.service.MyUserDetailsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,12 +24,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.TenX.Automobile.security.JwtAuthenticationFilter;
-import com.TenX.Automobile.security.constants.SecurityConstants;
-import com.TenX.Automobile.security.jwt.JwtTokenProvider;
-import com.TenX.Automobile.service.MyUserDetailsService;
-
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Enterprise-level Security Configuration with RBAC
