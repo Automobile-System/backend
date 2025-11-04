@@ -9,15 +9,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * Staff Controller - ADMIN, MANAGER, and STAFF roles
+ * Demonstrates RBAC for staff operations
+ */
 @Slf4j
 @RestController
-@RequestMapping("/api/staff")
+@RequestMapping("/api/v1/staff")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class StaffController {
 
-
+    /**
+     * View assigned tasks (Staff, Manager, Admin)
+     */
     @GetMapping("/tasks")
     public ResponseEntity<Map<String, Object>> getAssignedTasks() {
         log.info("Staff: Get assigned tasks");
@@ -29,7 +34,9 @@ public class StaffController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Update service status (Staff, Manager, Admin)
+     */
     @PutMapping("/services/{serviceId}/status")
     public ResponseEntity<Map<String, Object>> updateServiceStatus(
             @PathVariable String serviceId,
@@ -46,7 +53,9 @@ public class StaffController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * View customer information (Staff, Manager, Admin)
+     */
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<Map<String, Object>> getCustomerInfo(@PathVariable String customerId) {
         log.info("Staff: Get customer info: {}", customerId);
@@ -59,7 +68,9 @@ public class StaffController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Create service record (Staff, Manager, Admin)
+     */
     @PostMapping("/services")
     public ResponseEntity<Map<String, Object>> createService(@RequestBody Map<String, Object> serviceData) {
         log.info("Staff: Create new service record");
