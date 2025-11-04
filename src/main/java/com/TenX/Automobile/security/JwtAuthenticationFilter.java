@@ -5,7 +5,6 @@ import com.TenX.Automobile.security.jwt.JwtTokenProvider;
 import com.TenX.Automobile.service.MyUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -39,12 +38,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             // Extract JWT token from request header
-            String jwt = extractJwtFromCookie(request);
+            String jwt = extractJwtFromRequest(request);
 
-            if(jwt!=null && jwtTokenProvider.validateToken(jwt)){
+            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+                // Extract user email from token
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
+
+                // Load user details
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
+                // Create authentication token
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -52,10 +55,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 userDetails.getAuthorities()
                         );
 
+                // Set additional details
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // Set authentication in security context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("Authenticated user from cookie: {}", email);
+                log.debug("Successfully authenticated user: {} with roles: {}", 
+                        email, userDetails.getAuthorities());
             }
         } catch (Exception ex) {
             log.error("Cannot set user authentication: {}", ex.getMessage());
@@ -69,14 +76,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * Extract JWT token from Authorization header
      */
-    private String extractJwtFromCookie(HttpServletRequest request) {
-        if(request.getCookies()!=null){
-            for(Cookie cookie :request.getCookies()){
-                if("accessToken".equals(cookie.getName())){
-                    return cookie.getValue();
-                }
-            }
+    private String extractJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader(SecurityConstants.TOKEN_HEADER);
+
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(SecurityConstants.TOKEN_PREFIX)) {
+            return bearerToken.substring(SecurityConstants.TOKEN_PREFIX.length());
         }
+
         return null;
     }
 

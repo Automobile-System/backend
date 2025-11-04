@@ -9,15 +9,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * Manager Controller - ADMIN and MANAGER roles
+ * Demonstrates RBAC for management operations
+ */
 @Slf4j
 @RestController
-@RequestMapping("/api/manager")
+@RequestMapping("/api/v1/manager")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class ManagerController {
 
-
+    /**
+     * View staff performance (Manager and Admin)
+     */
     @GetMapping("/staff/performance")
     public ResponseEntity<Map<String, Object>> getStaffPerformance() {
         log.info("Manager: Get staff performance");
@@ -29,7 +34,9 @@ public class ManagerController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Approve service requests (Manager and Admin)
+     */
     @PostMapping("/services/{serviceId}/approve")
     public ResponseEntity<Map<String, Object>> approveService(@PathVariable String serviceId) {
         log.info("Manager: Approve service request: {}", serviceId);
@@ -42,7 +49,9 @@ public class ManagerController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * View reports (Manager and Admin)
+     */
     @GetMapping("/reports")
     public ResponseEntity<Map<String, Object>> getReports() {
         log.info("Manager: Get reports");
@@ -54,7 +63,9 @@ public class ManagerController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Manage inventory (Manager and Admin)
+     */
     @PutMapping("/inventory/{itemId}")
     public ResponseEntity<Map<String, Object>> updateInventory(
             @PathVariable String itemId,

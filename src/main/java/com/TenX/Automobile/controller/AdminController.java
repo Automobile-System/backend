@@ -9,15 +9,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * Admin Controller - ADMIN role only
+ * Demonstrates enterprise-level RBAC for administrative operations
+ */
 @Slf4j
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
-
+    /**
+     * Get all users (Admin only)
+     */
     @GetMapping("/users")
     public ResponseEntity<Map<String, Object>> getAllUsers() {
         log.info("Admin: Get all users request");
@@ -30,7 +35,9 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Manage user roles (Admin only)
+     */
     @PutMapping("/users/{userId}/roles")
     public ResponseEntity<Map<String, Object>> updateUserRoles(
             @PathVariable String userId,
@@ -46,7 +53,9 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * System configuration (Admin only)
+     */
     @GetMapping("/system/config")
     public ResponseEntity<Map<String, Object>> getSystemConfig() {
         log.info("Admin: Get system configuration");
@@ -59,7 +68,9 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * View audit logs (Admin only)
+     */
     @GetMapping("/audit-logs")
     public ResponseEntity<Map<String, Object>> getAuditLogs() {
         log.info("Admin: Get audit logs");
@@ -71,7 +82,9 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Delete user account (Admin only)
+     */
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable String userId) {
         log.warn("Admin: Delete user request for userId: {}", userId);

@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Customer Controller - Registration and customer-specific operations
+ * Demonstrates RBAC for customer operations
+ */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -24,6 +28,9 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
+    /**
+     * Public endpoint for customer registration
+     */
     @PostMapping("/auth/signup")
     public ResponseEntity<?> registerCustomer(@Valid @RequestBody CustomerRegistrationRequest customerRegistrationRequest) {
 
@@ -56,8 +63,10 @@ public class CustomerController {
         }
     }
 
-
-    @GetMapping("/customer/profile")
+    /**
+     * View own profile (All authenticated users)
+     */
+    @GetMapping("/v1/customer/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Customer: Get profile for user: {}", authentication.getName());
@@ -70,8 +79,10 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
-
-    @GetMapping("/customer/services")
+    /**
+     * View own service history (All authenticated users)
+     */
+    @GetMapping("/v1/customer/services")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getServiceHistory(Authentication authentication) {
         log.info("Customer: Get service history for user: {}", authentication.getName());
@@ -83,8 +94,10 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
-
-    @PostMapping("/customer/appointments")
+    /**
+     * Book appointment (All authenticated users)
+     */
+    @PostMapping("/v1/customer/appointments")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> bookAppointment(
             @RequestBody Map<String, Object> appointmentData,
@@ -100,8 +113,10 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
-
-    @PutMapping("/customer/profile")
+    /**
+     * Update own profile (All authenticated users)
+     */
+    @PutMapping("/v1/customer/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> updateProfile(
             @RequestBody Map<String, Object> profileData,
@@ -119,7 +134,7 @@ public class CustomerController {
     /**
      * Submit feedback (All authenticated users)
      */
-    @PostMapping("/customer/feedback")
+    @PostMapping("/v1/customer/feedback")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> submitFeedback(
             @RequestBody Map<String, String> feedback,

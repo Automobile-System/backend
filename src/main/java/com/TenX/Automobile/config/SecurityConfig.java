@@ -64,6 +64,7 @@ public class SecurityConfig {
                         // Public endpoints (no authentication required)
                         .requestMatchers(SecurityConstants.PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/auth/signup").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
                         
                         // Admin endpoints - ADMIN role only
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

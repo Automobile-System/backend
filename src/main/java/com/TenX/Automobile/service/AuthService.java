@@ -24,7 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-
+/**
+ * Enhanced Authentication Service with enterprise-level security features
+ * - JWT token generation and validation
+ * - Refresh token rotation
+ * - Remember-me functionality
+ * - Account lockout mechanism
+ * - Login attempt tracking
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,6 +44,10 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
 
+    /**
+     * Authenticate user with email and password
+     * Implements account lockout and failed attempt tracking
+     */
     @Transactional
     public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
         String email = request.getEmail().toLowerCase().trim();
