@@ -67,7 +67,7 @@ public class CustomerController {
      * View own profile (All authenticated users)
      */
     @GetMapping("/customer/profile")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Customer: Get profile for user: {}", authentication.getName());
         

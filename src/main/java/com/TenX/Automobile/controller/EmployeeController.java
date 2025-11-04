@@ -60,7 +60,8 @@ public class EmployeeController {
     }
 
     @GetMapping("/staff/profile")
-    @PreAuthorize("isAuthenticated()")
+//    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Employee: Get profile for user: {}", authentication.getName());
 

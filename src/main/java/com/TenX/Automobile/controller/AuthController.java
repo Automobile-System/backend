@@ -24,14 +24,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    /**
-     * Login endpoint
-     * Authenticates user with email and password
-     * 
-     * @param request Login request with email, password, and rememberMe flag
-     * @param httpRequest HTTP servlet request for IP tracking
-     * @return LoginResponse with JWT tokens and user information
-     */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request,
@@ -57,15 +49,7 @@ public class AuthController {
         return ResponseEntity.ok(loginResponse);
     }
 
-    /**
-     * Refresh token endpoint
-     * Generates new access token using refresh token
-     * Implements token rotation for enhanced security
-     * 
-     * @param request Refresh token request
-     * @param httpRequest HTTP servlet request for tracking
-     * @return RefreshTokenResponse with new access and refresh tokens
-     */
+
     @PostMapping("/refresh-token")
     public ResponseEntity<RefreshTokenResponse> refreshToken(
             @Valid @RequestBody RefreshTokenRequest request,
@@ -76,16 +60,10 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Logout endpoint
-     * Revokes refresh tokens and clears authentication
-     * 
-     * @param request Logout request (optional refresh token)
-     * @return LogoutResponse with success message
-     */
+
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<LogoutResponse> logout(@RequestBody(required = false) LogoutRequest request) {
+    public ResponseEntity<LogoutResponse> logout(@RequestBody(required = false) LogoutRequest request, HttpServletResponse httpResponse) {
         log.info("Logout request received");
         
         if (request == null) {
@@ -93,6 +71,31 @@ public class AuthController {
         }
         
         LogoutResponse response = authService.logout(request);
+
+        Cookie accessTokenCookie = new Cookie("accessToken", null);
+        accessTokenCookie.setHttpOnly(true);
+        accessTokenCookie.setSecure(true);
+        accessTokenCookie.setPath("/");
+        accessTokenCookie.setMaxAge(0); // Immediately expire
+        httpResponse.addCookie(accessTokenCookie);
+
+        // Clear refresh token cookie
+        Cookie refreshTokenCookie = new Cookie("refreshToken", null);
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(true);
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(0); // Immediately expire
+        httpResponse.addCookie(refreshTokenCookie);
+
+        // Clear remember me token cookie (if used)
+        Cookie rememberMeCookie = new Cookie("rememberMe", null);
+        rememberMeCookie.setHttpOnly(true);
+        rememberMeCookie.setSecure(true);
+        rememberMeCookie.setPath("/");
+        rememberMeCookie.setMaxAge(0);
+        httpResponse.addCookie(rememberMeCookie);
+
+        log.info("All authentication cookies cleared for user logout");
         return ResponseEntity.ok(response);
     }
 

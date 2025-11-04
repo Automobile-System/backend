@@ -42,7 +42,6 @@ public class EmployeeService {
                 .build();
 
         employee.addRole(Role.STAFF);
-        employee.addRole(Role.CUSTOMER);
 
         System.out.print("Saving Employee : "+employee);
         Employee savedEmployee = employeeRepository.save(employee);

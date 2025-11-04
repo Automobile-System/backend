@@ -27,7 +27,13 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @Entity
 @SuperBuilder
-@Table(name ="users")
+@Table(
+    name ="users",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "employee_id")
+    }
+)
 @Inheritance(strategy=InheritanceType.JOINED)
 @EntityListeners(AuditingEntityListener.class)
 public class UserEntity implements UserDetails {
@@ -82,8 +88,6 @@ public class UserEntity implements UserDetails {
     @Column(name = "updated_by")
     private String updatedBy;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name="role")
     @Builder.Default
