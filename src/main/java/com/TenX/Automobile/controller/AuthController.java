@@ -39,20 +39,22 @@ public class AuthController {
             jakarta.servlet.http.HttpServletResponse httpResponse) {
 
         log.info("Login request received for email: {}", request.getEmail());
-        LoginResponse response = authService.login(request, httpRequest);
+        LoginResult result = authService.login(request, httpRequest);
+        LoginTokens tokens = result.getTokens();
+        LoginResponse loginResponse = result.getResponse();
 
         // Set JWT access token in HttpOnly cookie
-    Cookie jwtCookie = new Cookie("accessToken", response.getAccessToken());
+    Cookie jwtCookie = new Cookie("accessToken", tokens.getAccessToken());
         jwtCookie.setHttpOnly(true);
         jwtCookie.setSecure(true); // Set to true in production (requires HTTPS)
         jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(response.getExpiresIn() != null ? (int)(response.getExpiresIn() / 1000) : 15 * 60); // default 15 min
+        jwtCookie.setMaxAge(tokens.getExpiresIn() != null ? (int)(tokens.getExpiresIn() / 1000) : 15 * 60); // default 15 min
         httpResponse.addCookie(jwtCookie);
 
         // Optionally, you may remove the accessToken from the response body for extra security
         // response.setAccessToken(null);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(loginResponse);
     }
 
     /**

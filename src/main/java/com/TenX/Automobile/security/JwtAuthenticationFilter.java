@@ -5,6 +5,7 @@ import com.TenX.Automobile.security.jwt.JwtTokenProvider;
 import com.TenX.Automobile.service.MyUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * JWT Authentication Filter - Validates JWT tokens on each request
@@ -38,9 +40,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             // Extract JWT token from request header
-            String jwt = extractJwtFromRequest(request);
+            String jwt = extractJwtFromCookies(request);
 
-            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+            if (jwt!=null && jwtTokenProvider.validateToken(jwt)) {
                 // Extract user email from token
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
 
@@ -74,18 +76,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extract JWT token from Authorization header
+     * Extract JWT token from HttpOnly cookie named "accessToken"
      */
-    private String extractJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader(SecurityConstants.TOKEN_HEADER);
-
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(SecurityConstants.TOKEN_PREFIX)) {
-            return bearerToken.substring(SecurityConstants.TOKEN_PREFIX.length());
+    private String extractJwtFromCookies(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
         }
 
-        return null;
+        return Arrays.stream(request.getCookies())
+                .filter(cookie -> "accessToken".equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
-
     /**
      * Skip filter for public URLs
      */

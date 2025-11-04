@@ -66,7 +66,7 @@ public class CustomerController {
     /**
      * View own profile (All authenticated users)
      */
-    @GetMapping("/v1/customer/profile")
+    @GetMapping("/customer/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Customer: Get profile for user: {}", authentication.getName());
@@ -82,7 +82,7 @@ public class CustomerController {
     /**
      * View own service history (All authenticated users)
      */
-    @GetMapping("/v1/customer/services")
+    @GetMapping("/customer/services")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> getServiceHistory(Authentication authentication) {
         log.info("Customer: Get service history for user: {}", authentication.getName());
@@ -116,7 +116,7 @@ public class CustomerController {
     /**
      * Update own profile (All authenticated users)
      */
-    @PutMapping("/v1/customer/profile")
+    @PutMapping("/customer/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> updateProfile(
             @RequestBody Map<String, Object> profileData,

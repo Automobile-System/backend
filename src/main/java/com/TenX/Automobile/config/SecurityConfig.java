@@ -73,10 +73,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/manager/**").hasAnyRole("ADMIN", "MANAGER")
                         
                         // Staff endpoints - ADMIN, MANAGER, and STAFF roles
-                        .requestMatchers("/api/v1/staff/**").hasAnyRole("ADMIN", "MANAGER", "STAFF")
+                        .requestMatchers("/api/staff/**").hasAnyRole("ADMIN", "MANAGER", "STAFF")
                         
                         // Customer endpoints - All authenticated users
-                        .requestMatchers("/api/v1/customer/**").hasAnyRole("ADMIN", "MANAGER", "STAFF", "CUSTOMER")
+                        .requestMatchers("/api/customer/**").hasAnyRole("ADMIN", "MANAGER", "STAFF", "CUSTOMER")
                         
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
