@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers(SecurityConstants.PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("api/services/**").permitAll()
                         
                         // Admin endpoints - ADMIN role only
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
