@@ -24,7 +24,6 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
 
-
     @PostMapping("/signup")
     public ResponseEntity<?> addEmployee(@Valid @RequestBody EmployeeRegistrationRequest employeeRegistrationRequest) {
         try{
@@ -61,7 +60,7 @@ public class EmployeeController {
 
     @GetMapping("/staff/profile")
 //    @PreAuthorize("isAuthenticated()")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Employee: Get profile for user: {}", authentication.getName());
 
