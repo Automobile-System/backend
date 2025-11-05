@@ -67,6 +67,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
+                        
+                        // Testing endpoint - REMOVE IN PRODUCTION!
+                        .requestMatchers("/api/notifications/test").permitAll()
+                        .requestMatchers("/api/notifications/{noti_id}").permitAll()
+                        .requestMatchers("/api/notifications/unread").permitAll()
+                        .requestMatchers("/api/notifications").permitAll()
+                  .requestMatchers("api/notifications/read-all").permitAll()
 
                         
                         // Admin endpoints - ADMIN role only
@@ -156,7 +163,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:4200",
-                "http://localhost:8080"
+                "http://localhost:8080",
+          "http://localhost:8081"
         ));
         
         // Allow all HTTP methods
