@@ -4,6 +4,7 @@ import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
 import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.dto.request.VehicleRequest;
+import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
 import com.TenX.Automobile.dto.response.CustomerRegistrationResponse;
 import com.TenX.Automobile.dto.response.VehicleResponse;
 import com.TenX.Automobile.entity.Customer;
@@ -239,4 +240,26 @@ public class CustomerController {
     }
 
 
+    /**
+     * Get dashboard overview for the authenticated customer
+     */
+    @GetMapping("/customer/dashboard/overview")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getDashboardOverview(Authentication authentication) {
+        try {
+            log.info("Customer: Get dashboard overview for user: {}", authentication.getName());
+            
+            CustomerDashboardResponse overview = customerService.getDashboardOverview(authentication.getName());
+            
+            return ResponseEntity.ok(overview);
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch dashboard overview: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching dashboard overview for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
 }

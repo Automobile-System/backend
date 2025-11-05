@@ -3,15 +3,19 @@ package com.TenX.Automobile.service;
 import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
 import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
+import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
 import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.CustomerRepository;
+import com.TenX.Automobile.repository.ProjectRepository;
+import com.TenX.Automobile.repository.ServiceRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -22,6 +26,8 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ServiceRepository serviceRepository;
+    private final ProjectRepository projectRepository;
 
     public Customer registerCustomer(CustomerRegistrationRequest customerRegistrationRequest){
         log.info("Customer Registration Request: {}", customerRegistrationRequest.getEmail());
@@ -223,5 +229,46 @@ public class CustomerService {
         }
         // Phone: optional + followed by 10-15 digits
         return phoneNumber.matches("^\\+?[0-9]{10,15}$");
+    }
+
+    /**
+     * Get dashboard overview for customer
+     */
+    public CustomerDashboardResponse getDashboardOverview(String email) {
+        log.info("Fetching dashboard overview for customer: {}", email);
+        
+        Customer customer = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
+        LocalDateTime endOfToday = startOfToday.plusDays(1).minusSeconds(1);
+        
+        // Count active services (not completed)
+        Long activeServices = serviceRepository.countActiveServicesByCustomerId(customer.getId());
+        
+        // Count completed services
+        Long completedServices = serviceRepository.countCompletedServicesByCustomerId(customer.getId());
+        
+        // Count active projects (not completed)
+        Long activeProjects = projectRepository.countActiveProjectsByCustomerId(customer.getId());
+        
+        // Count completed projects
+        Long completedProjects = projectRepository.countCompletedProjectsByCustomerId(customer.getId());
+        
+        // Count upcoming appointments (arriving date > end of today)
+        Long upcomingServiceAppointments = serviceRepository.countUpcomingServicesByCustomerId(customer.getId(), endOfToday);
+        Long upcomingProjectAppointments = projectRepository.countUpcomingProjectsByCustomerId(customer.getId(), endOfToday);
+        Long upcomingAppointments = upcomingServiceAppointments + upcomingProjectAppointments;
+        
+        log.info("Dashboard overview fetched successfully for customer: {}", email);
+        
+        return CustomerDashboardResponse.builder()
+                .activeServices(activeServices != null ? activeServices : 0L)
+                .completedServices(completedServices != null ? completedServices : 0L)
+                .activeProjects(activeProjects != null ? activeProjects : 0L)
+                .completedProjects(completedProjects != null ? completedProjects : 0L)
+                .upcomingAppointments(upcomingAppointments != null ? upcomingAppointments : 0L)
+                .build();
     }
 }
