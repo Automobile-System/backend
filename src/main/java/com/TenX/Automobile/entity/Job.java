@@ -15,11 +15,20 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -45,6 +54,19 @@ public class Job {
     @Column(name = "cost")
     private BigDecimal cost;
 
+    @ManyToMany
+    @JoinTable(
+        name = "job_vehicle",
+        joinColumns = @JoinColumn(name = "job_id"),
+        inverseJoinColumns = @JoinColumn(name = "vehicle_id")
+    )
+    @Builder.Default
+    private List<Vehicle> vehicles = new ArrayList<>();
+
+    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Task> tasks = new ArrayList<>();
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -52,6 +74,26 @@ public class Job {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void addVehicle(Vehicle vehicle) {
+        this.vehicles.add(vehicle);
+        vehicle.getJobs().add(this);
+    }
+
+    public void removeVehicle(Vehicle vehicle) {
+        this.vehicles.remove(vehicle);
+        vehicle.getJobs().remove(this);
+    }
+
+    public void addTask(Task task) {
+        this.tasks.add(task);
+        task.setJob(this);
+    }
+
+    public void removeTask(Task task) {
+        this.tasks.remove(task);
+        task.setJob(null);
+    }
 
 }
  

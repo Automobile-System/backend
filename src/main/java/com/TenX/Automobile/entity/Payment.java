@@ -1,13 +1,23 @@
 package com.TenX.Automobile.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Data
 @Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "payment")
 public class Payment {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,13 +30,17 @@ public class Payment {
   @Column(name="payment_type")
   private String p_Type;
 
-  @CreatedDate
-  @Column(name="created_at",nullable=false,updatable = false)
-  private LocalDateTime p_Created_at;
-
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "job_id", unique = true)
   private Job job;
+
+  @CreatedDate
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private LocalDateTime createdAt;
+
+  @LastModifiedDate
+  @Column(name = "updated_at", nullable = false)
+  private LocalDateTime updatedAt;
 
 }
 
