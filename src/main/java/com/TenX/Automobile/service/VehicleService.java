@@ -1,5 +1,7 @@
 package com.TenX.Automobile.service;
 
+import com.TenX.Automobile.dto.request.VehicleRequest;
+import com.TenX.Automobile.dto.response.VehicleResponse;
 import com.TenX.Automobile.entity.Vehicle;
 import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.repository.VehicleRepository;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,23 +28,13 @@ public class VehicleService {
 
   /**
    * Create a new vehicle for a customer
-   * @param vehicle Vehicle entity to create
+   * @param vehicleRequest Vehicle DTO to create
    * @param customerId UUID of the customer (UserEntity ID since Customer extends UserEntity)
-   * @return Created vehicle
+   * @return Created vehicle response DTO
    */
-  public Vehicle createVehicle(Vehicle vehicle, UUID customerId) {
+  public VehicleResponse createVehicle(VehicleRequest vehicleRequest, UUID customerId) {
     log.info("Creating vehicle with registration number: {} for customer: {}",
-      vehicle.getRegistration_No(), customerId);
-
-    // Validate vehicle data
-    validateVehicleData(vehicle);
-
-    // Check if registration number already exists
-    if (vehicleRepository.existsByRegistration_No(vehicle.getRegistration_No())) {
-      throw new DuplicateResourceException(
-        "Vehicle with registration number " + vehicle.getRegistration_No() + " already exists"
-      );
-    }
+      vehicleRequest.getRegistrationNo(), customerId);
 
     // Fetch and validate customer (Customer extends UserEntity, so ID is from UserEntity)
     Customer customer = customerRepository.findById(customerId)
@@ -54,45 +47,63 @@ public class VehicleService {
       throw new IllegalStateException("Cannot add vehicle to disabled customer account");
     }
 
+    // Check if registration number already exists
+    if (vehicleRepository.existsByRegistration_No(vehicleRequest.getRegistrationNo())) {
+      throw new DuplicateResourceException(
+        "Vehicle with registration number " + vehicleRequest.getRegistrationNo() + " already exists"
+      );
+    }
+
+    // Convert DTO to entity
+    Vehicle vehicle = new Vehicle();
+    vehicle.setRegistration_No(vehicleRequest.getRegistrationNo());
+    vehicle.setBrand_name(vehicleRequest.getBrandName());
+    vehicle.setModel(vehicleRequest.getModel());
+    vehicle.setCapacity(vehicleRequest.getCapacity());
     vehicle.setCustomer(customer);
+
     Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
     log.info("Vehicle created successfully with ID: {} for customer: {}",
       savedVehicle.getV_Id(), customerId);
-    return savedVehicle;
+    return convertToResponse(savedVehicle);
   }
 
   /**
    * Get vehicle by ID
    */
   @Transactional(readOnly = true)
-  public Vehicle getVehicleById(UUID vehicleId) {
+  public VehicleResponse getVehicleById(UUID vehicleId) {
     log.info("Fetching vehicle with ID: {}", vehicleId);
-    return vehicleRepository.findById(vehicleId)
+    Vehicle vehicle = vehicleRepository.findById(vehicleId)
       .orElseThrow(() -> new ResourceNotFoundException(
         "Vehicle not found with id: " + vehicleId
       ));
+    return convertToResponse(vehicle);
   }
 
   /**
    * Get vehicle by registration number
    */
   @Transactional(readOnly = true)
-  public Vehicle getVehicleByRegistrationNo(String registrationNo) {
+  public VehicleResponse getVehicleByRegistrationNo(String registrationNo) {
     log.info("Fetching vehicle with registration number: {}", registrationNo);
-    return vehicleRepository.findByRegistration_No(registrationNo)
+    Vehicle vehicle = vehicleRepository.findByRegistration_No(registrationNo)
       .orElseThrow(() -> new ResourceNotFoundException(
         "Vehicle not found with registration number: " + registrationNo
       ));
+    return convertToResponse(vehicle);
   }
 
   /**
    * Get all vehicles
    */
   @Transactional(readOnly = true)
-  public List<Vehicle> getAllVehicles() {
+  public List<VehicleResponse> getAllVehicles() {
     log.info("Fetching all vehicles");
-    return vehicleRepository.findAll();
+    return vehicleRepository.findAll().stream()
+      .map(this::convertToResponse)
+      .collect(Collectors.toList());
   }
 
   /**
@@ -100,7 +111,7 @@ public class VehicleService {
    * @param customerId Customer's UUID (from UserEntity ID)
    */
   @Transactional(readOnly = true)
-  public List<Vehicle> getVehiclesByCustomerId(UUID customerId) {
+  public List<VehicleResponse> getVehiclesByCustomerId(UUID customerId) {
     log.info("Fetching vehicles for customer ID: {}", customerId);
 
     // Verify customer exists
@@ -108,14 +119,16 @@ public class VehicleService {
       throw new ResourceNotFoundException("Customer not found with id: " + customerId);
     }
 
-    return vehicleRepository.findByCustomer_Id(customerId);
+    return vehicleRepository.findByCustomer_Id(customerId).stream()
+      .map(this::convertToResponse)
+      .collect(Collectors.toList());
   }
 
   /**
    * Get vehicles by customer email (since email is username in UserEntity)
    */
   @Transactional(readOnly = true)
-  public List<Vehicle> getVehiclesByCustomerEmail(String email) {
+  public List<VehicleResponse> getVehiclesByCustomerEmail(String email) {
     log.info("Fetching vehicles for customer email: {}", email);
 
     Customer customer = customerRepository.findByEmail(email)
@@ -123,65 +136,73 @@ public class VehicleService {
         "Customer not found with email: " + email
       ));
 
-    return vehicleRepository.findByCustomer_Id(customer.getId());
+    return vehicleRepository.findByCustomer_Id(customer.getId()).stream()
+      .map(this::convertToResponse)
+      .collect(Collectors.toList());
   }
 
   /**
    * Get vehicles by brand
    */
   @Transactional(readOnly = true)
-  public List<Vehicle> getVehiclesByBrand(String brandName) {
+  public List<VehicleResponse> getVehiclesByBrand(String brandName) {
     log.info("Fetching vehicles by brand: {}", brandName);
-    return vehicleRepository.findByBrand_name(brandName);
+    return vehicleRepository.findByBrand_name(brandName).stream()
+      .map(this::convertToResponse)
+      .collect(Collectors.toList());
   }
 
   /**
    * Get vehicles by model
    */
   @Transactional(readOnly = true)
-  public List<Vehicle> getVehiclesByModel(String model) {
+  public List<VehicleResponse> getVehiclesByModel(String model) {
     log.info("Fetching vehicles by model: {}", model);
-    return vehicleRepository.findByModel(model);
+    return vehicleRepository.findByModel(model).stream()
+      .map(this::convertToResponse)
+      .collect(Collectors.toList());
   }
 
   /**
    * Get vehicles by minimum capacity
    */
   @Transactional(readOnly = true)
-  public List<Vehicle> getVehiclesByMinimumCapacity(int capacity) {
+  public List<VehicleResponse> getVehiclesByMinimumCapacity(int capacity) {
     log.info("Fetching vehicles with minimum capacity: {}", capacity);
-    return vehicleRepository.findByCapacityGreaterThanEqual(capacity);
+    return vehicleRepository.findByCapacityGreaterThanEqual(capacity).stream()
+      .map(this::convertToResponse)
+      .collect(Collectors.toList());
   }
 
   /**
    * Update vehicle details
    */
-  public Vehicle updateVehicle(UUID vehicleId, Vehicle vehicleDetails) {
+  public VehicleResponse updateVehicle(UUID vehicleId, VehicleRequest vehicleRequest) {
     log.info("Updating vehicle with ID: {}", vehicleId);
 
-    Vehicle existingVehicle = getVehicleById(vehicleId);
-
-    // Validate new vehicle data
-    validateVehicleData(vehicleDetails);
+    Vehicle existingVehicle = vehicleRepository.findById(vehicleId)
+      .orElseThrow(() -> new ResourceNotFoundException(
+        "Vehicle not found with id: " + vehicleId
+      ));
 
     // Check if new registration number conflicts with existing one
-    if (!existingVehicle.getRegistration_No().equals(vehicleDetails.getRegistration_No())) {
-      if (vehicleRepository.existsByRegistration_No(vehicleDetails.getRegistration_No())) {
+    if (!existingVehicle.getRegistration_No().equals(vehicleRequest.getRegistrationNo())) {
+      if (vehicleRepository.existsByRegistration_No(vehicleRequest.getRegistrationNo())) {
         throw new DuplicateResourceException(
-          "Vehicle with registration number " + vehicleDetails.getRegistration_No() + " already exists"
+          "Vehicle with registration number " + vehicleRequest.getRegistrationNo() + " already exists"
         );
       }
-      existingVehicle.setRegistration_No(vehicleDetails.getRegistration_No());
+      existingVehicle.setRegistration_No(vehicleRequest.getRegistrationNo());
     }
 
-    existingVehicle.setBrand_name(vehicleDetails.getBrand_name());
-    existingVehicle.setModel(vehicleDetails.getModel());
-    existingVehicle.setCapacity(vehicleDetails.getCapacity());
+    existingVehicle.setBrand_name(vehicleRequest.getBrandName());
+    existingVehicle.setModel(vehicleRequest.getModel());
+    existingVehicle.setCapacity(vehicleRequest.getCapacity());
 
     Vehicle updatedVehicle = vehicleRepository.save(existingVehicle);
     log.info("Vehicle updated successfully with ID: {}", vehicleId);
 
-    return updatedVehicle;
+    return convertToResponse(updatedVehicle);
   }
 
   /**
@@ -189,10 +210,13 @@ public class VehicleService {
    * @param vehicleId UUID of vehicle to transfer
    * @param newCustomerId UUID of new customer (UserEntity ID)
    */
-  public Vehicle transferVehicleToCustomer(UUID vehicleId, UUID newCustomerId) {
+  public VehicleResponse transferVehicleToCustomer(UUID vehicleId, UUID newCustomerId) {
     log.info("Transferring vehicle {} to customer {}", vehicleId, newCustomerId);
 
-    Vehicle vehicle = getVehicleById(vehicleId);
+    Vehicle vehicle = vehicleRepository.findById(vehicleId)
+      .orElseThrow(() -> new ResourceNotFoundException(
+        "Vehicle not found with id: " + vehicleId
+      ));
 
     Customer newCustomer = customerRepository.findById(newCustomerId)
       .orElseThrow(() -> new ResourceNotFoundException(
@@ -210,7 +234,7 @@ public class VehicleService {
 
     log.info("Vehicle {} transferred successfully from customer {} to customer {}",
       vehicleId, oldCustomerId, newCustomerId);
-    return transferredVehicle;
+    return convertToResponse(transferredVehicle);
   }
 
   /**
@@ -219,21 +243,13 @@ public class VehicleService {
   public void deleteVehicle(UUID vehicleId) {
     log.info("Deleting vehicle with ID: {}", vehicleId);
 
-    Vehicle vehicle = getVehicleById(vehicleId);
+    Vehicle vehicle = vehicleRepository.findById(vehicleId)
+      .orElseThrow(() -> new ResourceNotFoundException(
+        "Vehicle not found with id: " + vehicleId
+      ));
     vehicleRepository.delete(vehicle);
 
     log.info("Vehicle deleted successfully with ID: {}", vehicleId);
-  }
-
-  /**
-   * Soft delete - mark vehicle as inactive (if you want to implement soft delete)
-   */
-  public void deactivateVehicle(UUID vehicleId) {
-    log.info("Deactivating vehicle with ID: {}", vehicleId);
-    Vehicle vehicle = getVehicleById(vehicleId);
-    // You can add an 'active' field to Vehicle entity and set it to false here
-    vehicleRepository.save(vehicle);
-    log.info("Vehicle deactivated successfully with ID: {}", vehicleId);
   }
 
   /**
@@ -265,23 +281,18 @@ public class VehicleService {
   }
 
   /**
-   * Validate vehicle data
+   * Convert Vehicle entity to VehicleResponse DTO
    */
-  private void validateVehicleData(Vehicle vehicle) {
-    if (vehicle.getRegistration_No() == null || vehicle.getRegistration_No().trim().isEmpty()) {
-      throw new IllegalArgumentException("Registration number cannot be empty");
-    }
-
-    if (vehicle.getBrand_name() == null || vehicle.getBrand_name().trim().isEmpty()) {
-      throw new IllegalArgumentException("Brand name cannot be empty");
-    }
-
-    if (vehicle.getModel() == null || vehicle.getModel().trim().isEmpty()) {
-      throw new IllegalArgumentException("Model cannot be empty");
-    }
-
-    if (vehicle.getCapacity() <= 0) {
-      throw new IllegalArgumentException("Capacity must be greater than 0");
-    }
+  private VehicleResponse convertToResponse(Vehicle vehicle) {
+    return VehicleResponse.builder()
+      .vehicleId(vehicle.getV_Id())
+      .registrationNo(vehicle.getRegistration_No())
+      .brandName(vehicle.getBrand_name())
+      .model(vehicle.getModel())
+      .capacity(vehicle.getCapacity())
+      .createdBy(vehicle.getCreatedBy())
+      .customerId(vehicle.getCustomer() != null ? vehicle.getCustomer().getId() : null)
+      .customerEmail(vehicle.getCustomer() != null ? vehicle.getCustomer().getEmail() : null)
+      .build();
   }
 }

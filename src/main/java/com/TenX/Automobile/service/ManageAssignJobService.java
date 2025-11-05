@@ -3,6 +3,7 @@ package com.TenX.Automobile.service;
 import com.TenX.Automobile.entity.ManageAssignJob;
 import com.TenX.Automobile.entity.Job;
 import com.TenX.Automobile.entity.Employee;
+import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.ManageAssignJobRepository;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.EmployeeRepository;
@@ -28,6 +29,7 @@ public class ManageAssignJobService {
 
     /**
      * Create a new job assignment (Manager assigns job to Employee)
+     * Validates that the manager has MANAGER role
      */
     public ManageAssignJob createJobAssignment(Long jobId, UUID managerId, UUID employeeId) {
         log.info("Creating job assignment: jobId={}, managerId={}, employeeId={}", jobId, managerId, employeeId);
@@ -36,13 +38,22 @@ public class ManageAssignJobService {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
 
-        // Validate that manager exists
+        // Validate that manager exists and has MANAGER role
         Employee manager = employeeRepository.findById(managerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Manager not found with id: " + managerId));
+        
+        if (!manager.hasRole(Role.MANAGER)) {
+            throw new IllegalArgumentException("User with id " + managerId + " is not a manager. Only managers can assign jobs.");
+        }
 
         // Validate that employee exists
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+
+        // Ensure employee is not a manager (optional validation - you can remove this if managers can be assigned jobs)
+        if (employee.hasRole(Role.MANAGER)) {
+            log.warn("Assigning job to a manager. This might be intentional.");
+        }
 
         // Check if assignment already exists for this job (one-to-one relationship)
         if (manageAssignJobRepository.existsByJob_JobId(jobId)) {
@@ -51,13 +62,13 @@ public class ManageAssignJobService {
 
         ManageAssignJob assignment = new ManageAssignJob();
         assignment.setJob(job);
-        assignment.setManagerId(manager);
-        assignment.setEmployeeId(employee);
+        assignment.setManager(manager);
+        assignment.setEmployee(employee);
 
         ManageAssignJob savedAssignment = manageAssignJobRepository.save(assignment);
 
-        log.info("Job assignment created successfully with ID: {} for job: {}", 
-                savedAssignment.getManageAssignJob_Id(), jobId);
+        log.info("Job assignment created successfully with ID: {} - Manager {} assigned job {} to employee {}", 
+                savedAssignment.getManageAssignJob_Id(), managerId, jobId, employeeId);
         return savedAssignment;
     }
 
@@ -96,7 +107,7 @@ public class ManageAssignJobService {
     @Transactional(readOnly = true)
     public List<ManageAssignJob> getAssignmentsByManagerId(UUID managerId) {
         log.info("Fetching job assignments for manager ID: {}", managerId);
-        return manageAssignJobRepository.findByManagerId_Id(managerId);
+        return manageAssignJobRepository.findByManager_Id(managerId);
     }
 
     /**
@@ -105,7 +116,7 @@ public class ManageAssignJobService {
     @Transactional(readOnly = true)
     public List<ManageAssignJob> getAssignmentsByEmployeeId(UUID employeeId) {
         log.info("Fetching job assignments for employee ID: {}", employeeId);
-        return manageAssignJobRepository.findByEmployeeId_Id(employeeId);
+        return manageAssignJobRepository.findByEmployee_Id(employeeId);
     }
 
     /**
@@ -114,24 +125,30 @@ public class ManageAssignJobService {
     @Transactional(readOnly = true)
     public List<ManageAssignJob> getAssignmentsByManagerAndEmployee(UUID managerId, UUID employeeId) {
         log.info("Fetching job assignments for manager ID: {} and employee ID: {}", managerId, employeeId);
-        return manageAssignJobRepository.findByManagerId_IdAndEmployeeId_Id(managerId, employeeId);
+        return manageAssignJobRepository.findByManager_IdAndEmployee_Id(managerId, employeeId);
     }
 
     /**
-     * Reassign job to a different employee
+     * Reassign job to a different employee (only by manager)
      */
-    public ManageAssignJob reassignJob(Long jobId, UUID newEmployeeId) {
-        log.info("Reassigning job {} to employee {}", jobId, newEmployeeId);
+    public ManageAssignJob reassignJob(Long jobId, UUID newEmployeeId, UUID managerId) {
+        log.info("Reassigning job {} to employee {} by manager {}", jobId, newEmployeeId, managerId);
 
         ManageAssignJob assignment = getAssignmentByJobId(jobId);
+        
+        // Verify that the requesting user is the manager who originally assigned the job
+        if (!assignment.getManager().getId().equals(managerId)) {
+            throw new IllegalArgumentException("Only the original manager can reassign this job");
+        }
         
         Employee newEmployee = employeeRepository.findById(newEmployeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + newEmployeeId));
 
-        assignment.setEmployeeId(newEmployee);
+        UUID oldEmployeeId = assignment.getEmployee().getId();
+        assignment.setEmployee(newEmployee);
         ManageAssignJob updatedAssignment = manageAssignJobRepository.save(assignment);
 
-        log.info("Job reassigned successfully");
+        log.info("Job reassigned successfully from {} to {}", oldEmployeeId, newEmployeeId);
         return updatedAssignment;
     }
 

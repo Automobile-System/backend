@@ -11,8 +11,8 @@ import java.util.UUID;
 @Repository
 public interface ManageAssignJobRepository extends JpaRepository<ManageAssignJob, UUID> {
     Optional<ManageAssignJob> findByJob_JobId(Long jobId);
-    List<ManageAssignJob> findByManagerId_Id(UUID managerId);
-    List<ManageAssignJob> findByEmployeeId_Id(UUID employeeId);
-    List<ManageAssignJob> findByManagerId_IdAndEmployeeId_Id(UUID managerId, UUID employeeId);
+    List<ManageAssignJob> findByManager_Id(UUID managerId);
+    List<ManageAssignJob> findByEmployee_Id(UUID employeeId);
+    List<ManageAssignJob> findByManager_IdAndEmployee_Id(UUID managerId, UUID employeeId);
     boolean existsByJob_JobId(Long jobId);
 }

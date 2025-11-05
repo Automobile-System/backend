@@ -29,9 +29,9 @@ public class ManageAssignJob {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name="manager_id", nullable = false)
-  private Employee managerId;
+  private Employee manager;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name="employee_id", nullable = false)
-  private Employee employeeId;
+  private Employee employee;
 }

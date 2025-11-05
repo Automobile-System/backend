@@ -1,9 +1,12 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.dto.request.VehicleRequest;
+import com.TenX.Automobile.dto.response.VehicleResponse;
 import com.TenX.Automobile.service.VehicleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -22,44 +25,49 @@ public class VehicleController {
 
   @GetMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-  public ResponseEntity<List<Vehicle>> getAllVehicles() {
+  public ResponseEntity<List<VehicleResponse>> getAllVehicles() {
     log.info("Fetching all vehicles");
     return ResponseEntity.ok(vehicleService.getAllVehicles());
   }
 
   @GetMapping("/{vehicleId}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Vehicle> getVehicleById(@PathVariable UUID vehicleId) {
+  public ResponseEntity<VehicleResponse> getVehicleById(@PathVariable UUID vehicleId) {
     log.info("Fetching vehicle with ID: {}", vehicleId);
     return ResponseEntity.ok(vehicleService.getVehicleById(vehicleId));
   }
 
   @GetMapping("/registration/{registrationNo}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Vehicle> getVehicleByRegistrationNo(@PathVariable String registrationNo) {
+  public ResponseEntity<VehicleResponse> getVehicleByRegistrationNo(@PathVariable String registrationNo) {
     log.info("Fetching vehicle with registration number: {}", registrationNo);
     return ResponseEntity.ok(vehicleService.getVehicleByRegistrationNo(registrationNo));
   }
 
   @GetMapping("/customer/{customerId}")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<List<Vehicle>> getVehiclesByCustomerId(@PathVariable UUID customerId) {
+  public ResponseEntity<List<VehicleResponse>> getVehiclesByCustomerId(@PathVariable UUID customerId) {
     log.info("Fetching vehicles for customer ID: {}", customerId);
     return ResponseEntity.ok(vehicleService.getVehiclesByCustomerId(customerId));
   }
 
-  @PostMapping("/customer/{customerId}")
+  @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
-  public ResponseEntity<Vehicle> createVehicle(@PathVariable UUID customerId, @RequestBody Vehicle vehicle) {
+  public ResponseEntity<VehicleResponse> createVehicle(
+      @RequestParam UUID customerId, 
+      @Valid @RequestBody VehicleRequest vehicleRequest) {
     log.info("Creating vehicle for customer ID: {}", customerId);
-    return ResponseEntity.ok(vehicleService.createVehicle(vehicle, customerId));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(vehicleService.createVehicle(vehicleRequest, customerId));
   }
 
   @PutMapping("/{vehicleId}")
   @PreAuthorize("hasAnyRole('ADMIN', 'CUSTOMER')")
-  public ResponseEntity<Vehicle> updateVehicle(@PathVariable UUID vehicleId, @RequestBody Vehicle vehicleDetails) {
+  public ResponseEntity<VehicleResponse> updateVehicle(
+      @PathVariable UUID vehicleId, 
+      @Valid @RequestBody VehicleRequest vehicleRequest) {
     log.info("Updating vehicle with ID: {}", vehicleId);
-    return ResponseEntity.ok(vehicleService.updateVehicle(vehicleId, vehicleDetails));
+    return ResponseEntity.ok(vehicleService.updateVehicle(vehicleId, vehicleRequest));
   }
 
   @DeleteMapping("/{vehicleId}")

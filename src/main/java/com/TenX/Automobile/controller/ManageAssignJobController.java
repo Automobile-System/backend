@@ -73,8 +73,9 @@ public class ManageAssignJobController {
             @PathVariable Long jobId,
             @RequestBody Map<String, String> request) {
         UUID newEmployeeId = UUID.fromString(request.get("employeeId"));
-        log.info("Reassigning job {} to employee {}", jobId, newEmployeeId);
-        return ResponseEntity.ok(manageAssignJobService.reassignJob(jobId, newEmployeeId));
+        UUID managerId = UUID.fromString(request.get("managerId"));
+        log.info("Reassigning job {} to employee {} by manager {}", jobId, newEmployeeId, managerId);
+        return ResponseEntity.ok(manageAssignJobService.reassignJob(jobId, newEmployeeId, managerId));
     }
 
     @DeleteMapping("/{assignmentId}")
