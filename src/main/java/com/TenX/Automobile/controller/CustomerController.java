@@ -6,6 +6,7 @@ import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.dto.request.VehicleRequest;
 import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
 import com.TenX.Automobile.dto.response.CustomerRegistrationResponse;
+import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.dto.response.VehicleResponse;
 import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
@@ -19,7 +20,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -262,4 +262,30 @@ public class CustomerController {
                     .body(Map.of("error", "An unexpected error occurred"));
         }
     }
+
+    /**
+     * Get service frequency chart data for the authenticated customer
+     */
+    @GetMapping("/customer/dashboard/service-frequency")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getServiceFrequency(
+            @RequestParam(value = "period", defaultValue = "1year") String period,
+            Authentication authentication) {
+        try {
+            log.info("Customer: Get service frequency for user: {} with period: {}", authentication.getName(), period);
+
+            List<ServiceFrequencyResponse> serviceFrequency = customerService.getServiceFrequency(authentication.getName(), period);
+
+            return ResponseEntity.ok(serviceFrequency);
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch service frequency: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching service frequency for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
 }

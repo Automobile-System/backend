@@ -22,4 +22,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     @Query("SELECT COUNT(p) FROM Project p JOIN p.vehicles v WHERE v.customer.id = :customerId AND p.arrivingDate > :currentDate")
     Long countUpcomingProjectsByCustomerId(@Param("customerId") UUID customerId, @Param("currentDate") LocalDateTime currentDate);
 
+    @Query("SELECT p FROM Project p JOIN p.vehicles v WHERE v.customer.id = :customerId AND p.createdAt >= :startDate ORDER BY p.createdAt")
+    java.util.List<Project> findProjectsByCustomerIdAndDateRange(@Param("customerId") UUID customerId, @Param("startDate") LocalDateTime startDate);
+
 }

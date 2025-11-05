@@ -22,4 +22,7 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
     @Query("SELECT COUNT(s) FROM Service s JOIN s.vehicles v WHERE v.customer.id = :customerId AND s.arrivingDate > :currentDate")
     Long countUpcomingServicesByCustomerId(@Param("customerId") UUID customerId, @Param("currentDate") LocalDateTime currentDate);
 
+    @Query("SELECT s FROM Service s JOIN s.vehicles v WHERE v.customer.id = :customerId AND s.createdAt >= :startDate ORDER BY s.createdAt")
+    java.util.List<Service> findServicesByCustomerIdAndDateRange(@Param("customerId") UUID customerId, @Param("startDate") LocalDateTime startDate);
+
 }

@@ -4,7 +4,9 @@ import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
 import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
+import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.entity.Customer;
+import com.TenX.Automobile.entity.Project;
 import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.CustomerRepository;
 import com.TenX.Automobile.repository.ProjectRepository;
@@ -16,7 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.format.TextStyle;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -271,4 +275,93 @@ public class CustomerService {
                 .upcomingAppointments(upcomingAppointments != null ? upcomingAppointments : 0L)
                 .build();
     }
+
+    /**
+     * Get service frequency data for customer
+     * @param email Customer email
+     * @param period Period filter: "6months", "1year", or "all"
+     * @return List of monthly service counts
+     */
+    public List<ServiceFrequencyResponse> getServiceFrequency(String email, String period) {
+        log.info("Fetching service frequency for customer: {} with period: {}", email, period);
+        
+        Customer customer = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
+        
+        // Determine the start date based on period
+        LocalDateTime startDate;
+        LocalDateTime now = LocalDateTime.now();
+        
+        switch (period != null ? period.toLowerCase() : "1year") {
+            case "6months":
+                startDate = now.minusMonths(6).withDayOfMonth(1).toLocalDate().atStartOfDay();
+                break;
+            case "all":
+                startDate = LocalDateTime.of(2000, 1, 1, 0, 0); // Far past date
+                break;
+            case "1year":
+            default:
+                startDate = now.minusMonths(12).withDayOfMonth(1).toLocalDate().atStartOfDay();
+                break;
+        }
+        
+        // Fetch services and projects
+        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findServicesByCustomerIdAndDateRange(customer.getId(), startDate);
+        List<Project> projects = projectRepository.findProjectsByCustomerIdAndDateRange(customer.getId(), startDate);
+        
+        // Group by month and count
+        Map<String, Long> monthlyCount = new LinkedHashMap<>();
+        
+        // Initialize months based on period
+        initializeMonths(monthlyCount, startDate, now, period);
+        
+        // Count services by month
+        for (com.TenX.Automobile.entity.Service service : services) {
+            if (service.getCreatedAt() != null) {
+                String monthKey = getMonthKey(service.getCreatedAt());
+                monthlyCount.put(monthKey, monthlyCount.getOrDefault(monthKey, 0L) + 1);
+            }
+        }
+        
+        // Count projects by month
+        for (Project project : projects) {
+            if (project.getCreatedAt() != null) {
+                String monthKey = getMonthKey(project.getCreatedAt());
+                monthlyCount.put(monthKey, monthlyCount.getOrDefault(monthKey, 0L) + 1);
+            }
+        }
+        
+        // Convert to response list
+        List<ServiceFrequencyResponse> response = monthlyCount.entrySet().stream()
+                .map(entry -> ServiceFrequencyResponse.builder()
+                        .month(entry.getKey())
+                        .jobs(entry.getValue())
+                        .build())
+                .collect(Collectors.toList());
+        
+        log.info("Service frequency fetched successfully for customer: {}", email);
+        return response;
+    }
+    
+    /**
+     * Initialize months map with zero counts
+     */
+    private void initializeMonths(Map<String, Long> monthlyCount, LocalDateTime startDate, LocalDateTime endDate, String period) {
+        LocalDateTime current = startDate.withDayOfMonth(1).toLocalDate().atStartOfDay();
+        LocalDateTime end = endDate.withDayOfMonth(1).toLocalDate().atStartOfDay();
+        
+        while (!current.isAfter(end)) {
+            String monthKey = getMonthKey(current);
+            monthlyCount.put(monthKey, 0L);
+            current = current.plusMonths(1);
+        }
+    }
+    
+    /**
+     * Get month key in format "MMM" (e.g., "Jan", "Feb")
+     */
+    private String getMonthKey(LocalDateTime date) {
+        return date.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+    }
 }
+
