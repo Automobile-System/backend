@@ -31,6 +31,6 @@ ENV JAVA_OPTS=""
 
 # Healthcheck (optional) - uses curl if present; not all base images provide it
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD [ "sh", "-c", "if [ $(pgrep -f 'java.*app.jar' >/dev/null; echo $?) -eq 0 ]; then exit 0; else exit 1; fi" ]
+    CMD [ "sh", "-c", "if [ $(pgrep -f 'java.*app.jar' >/dev/null; echo $?) -eq 0 ]; then exit 0; else exit 1; fi" ]
 
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
