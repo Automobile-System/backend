@@ -6,7 +6,9 @@ import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.dto.request.VehicleRequest;
 import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
 import com.TenX.Automobile.dto.response.CustomerRegistrationResponse;
+import com.TenX.Automobile.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
+import com.TenX.Automobile.dto.response.ServiceListResponse;
 import com.TenX.Automobile.dto.response.VehicleResponse;
 import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
@@ -283,6 +285,66 @@ public class CustomerController {
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("Unexpected error fetching service frequency for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Get all services for authenticated customer
+     * @param status Optional status filter (active, completed, upcoming)
+     */
+    @GetMapping("/customer/services")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getCustomerServices(
+            Authentication authentication,
+            @RequestParam(required = false) String status) {
+        
+        try {
+            log.info("Get customer services - status filter: {}", status);
+            
+            List<ServiceListResponse> services = customerService.getCustomerServices(authentication.getName(), status);
+            
+            return ResponseEntity.ok(services);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid status filter: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch services: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching services for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Get detailed information about a specific service
+     * @param serviceId Service ID
+     */
+    @GetMapping("/customer/services/{serviceId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getServiceDetails(
+            Authentication authentication,
+            @PathVariable Long serviceId) {
+        
+        try {
+            log.info("Get service details - serviceId: {}", serviceId);
+            
+            ServiceDetailResponse service = customerService.getServiceDetails(authentication.getName(), serviceId);
+            
+            return ResponseEntity.ok(service);
+            
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch service details: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching service details for user: {}", authentication.getName(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "An unexpected error occurred"));
         }

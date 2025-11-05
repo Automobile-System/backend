@@ -66,7 +66,7 @@ public class BookingController {
 
     /**
      * Book a service for authenticated customer
-     * @param request Service booking request containing serviceId, arrivingDate, and vehicleIds
+     * @param request Service booking request containing serviceId, arrivingDate, and vehicleId
      * @return ServiceBookingResponse with booking confirmation details
      */
     @PostMapping("/service")

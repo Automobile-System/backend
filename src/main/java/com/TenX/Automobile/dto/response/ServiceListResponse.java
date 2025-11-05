@@ -12,18 +12,17 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ServiceBookingResponse {
-
-    private Long jobId;
+public class ServiceListResponse {
     private Long serviceId;
     private String title;
     private String description;
+    private String category;
     private String status;
     private LocalDateTime arrivingDate;
     private BigDecimal cost;
     private Double estimatedHours;
-    private String category;
     private String vehicleRegistration;
-    private String message;
+    private String vehicleBrand;
+    private String vehicleModel;
     private LocalDateTime bookedAt;
 }

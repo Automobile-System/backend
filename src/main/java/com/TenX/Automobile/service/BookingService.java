@@ -23,7 +23,6 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -122,13 +121,13 @@ public class BookingService {
 
     /**
      * Book a service for a customer
-     * @param request Service booking request with serviceId, arrivingDate, and vehicleIds
+     * @param request Service booking request with serviceId, arrivingDate, and vehicleId
      * @return ServiceBookingResponse with booking details
      */
     @Transactional
     public ServiceBookingResponse bookService(ServiceBookingRequest request) {
-        log.info("Booking service - serviceId: {}, arrivingDate: {}, vehicles: {}", 
-                request.getServiceId(), request.getArrivingDate(), request.getVehicleIds());
+        log.info("Booking service - serviceId: {}, arrivingDate: {}, vehicle: {}", 
+                request.getServiceId(), request.getArrivingDate(), request.getVehicleId());
 
         // Get authenticated customer email
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -152,22 +151,16 @@ public class BookingService {
         com.TenX.Automobile.entity.Service service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found with ID: " + request.getServiceId()));
 
-        // Find and validate vehicles belong to customer
-        List<Vehicle> vehicles = new ArrayList<>();
-        for (UUID vehicleId : request.getVehicleIds()) {
-            Vehicle vehicle = vehicleRepository.findByIdAndCustomerId(vehicleId, customer.getId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle not found or doesn't belong to customer: " + vehicleId));
-            vehicles.add(vehicle);
-        }
+        // Find and validate vehicle belongs to customer
+        Vehicle vehicle = vehicleRepository.findByIdAndCustomerId(request.getVehicleId(), customer.getId())
+                .orElseThrow(() -> new RuntimeException("Vehicle not found or doesn't belong to customer: " + request.getVehicleId()));
 
         // Update service with booking details
         service.setArrivingDate(request.getArrivingDate());
         service.setStatus("PENDING");
         
-        // Add vehicles to the service
-        for (Vehicle vehicle : vehicles) {
-            service.addVehicle(vehicle);
-        }
+        // Add vehicle to the service
+        service.addVehicle(vehicle);
 
         // Save the service
         com.TenX.Automobile.entity.Service savedService = serviceRepository.save(service);
@@ -185,9 +178,7 @@ public class BookingService {
                 .cost(savedService.getCost())
                 .estimatedHours(savedService.getEstimatedHours())
                 .category(savedService.getCategory())
-                .vehicleRegistrations(vehicles.stream()
-                        .map(Vehicle::getRegistration_No)
-                        .collect(Collectors.toList()))
+                .vehicleRegistration(vehicle.getRegistration_No())
                 .message("Service booked successfully!")
                 .bookedAt(LocalDateTime.now())
                 .build();

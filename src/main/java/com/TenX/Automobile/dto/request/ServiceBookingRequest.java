@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -22,8 +21,6 @@ public class ServiceBookingRequest {
     @NotNull(message = "Arriving date is required")
     private LocalDateTime arrivingDate;
 
-    @NotNull(message = "At least one vehicle is required")
-    private List<UUID> vehicleIds;
-
-    private String additionalNotes;
+    @NotNull(message = "Vehicle ID is required")
+    private UUID vehicleId;
 }
