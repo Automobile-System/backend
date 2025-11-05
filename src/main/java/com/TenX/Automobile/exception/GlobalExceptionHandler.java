@@ -3,208 +3,218 @@ package com.TenX.Automobile.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.FieldError;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Global Exception Handler for enterprise-level error management
+ * Global Exception Handler for enterprise-level error handling
+ * Provides consistent error responses across the application
  */
-@RestControllerAdvice
 @Slf4j
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * Handle validation errors
-     */
+    // 🔹 Handle validation errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
-            MethodArgumentNotValidException ex, WebRequest request) {
-        
-        Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            fieldErrors.put(fieldName, errorMessage);
-        });
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Validation Error");
 
-        Map<String, Object> errorResponse = createErrorResponse(
-                "Validation failed",
-                "VALIDATION_ERROR",
-                HttpStatus.BAD_REQUEST,
-                request.getDescription(false)
-        );
-        errorResponse.put("fieldErrors", fieldErrors);
+        String firstError = ex.getBindingResult().getFieldErrors().stream()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .findFirst()
+                .orElse("Invalid input");
 
-        log.warn("Validation error: {}", fieldErrors);
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
+        body.put("message", firstError);
 
-    /**
-     * Handle illegal argument exceptions (business logic errors)
-     */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
-            IllegalArgumentException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                ex.getMessage(),
-                "BUSINESS_LOGIC_ERROR",
-                HttpStatus.BAD_REQUEST,
-                request.getDescription(false)
+        // 🔸 Log detailed errors in console
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                log.error("Validation error on field '{}': {}", error.getField(), error.getDefaultMessage())
         );
 
-        log.warn("Business logic error: {}", ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        return ResponseEntity.badRequest().body(body);
     }
 
-    /**
-     * Handle authentication exceptions
-     */
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, Object>> handleAuthenticationException(
-            AuthenticationException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                "Authentication failed",
-                "AUTHENTICATION_ERROR",
-                HttpStatus.UNAUTHORIZED,
-                request.getDescription(false)
-        );
+    // 🔹 Handle account locked exception
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountLockedException(AccountLockedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.LOCKED.value());
+        body.put("error", "Account Locked");
+        body.put("message", ex.getMessage());
+        body.put("lockDurationMinutes", ex.getLockDurationMinutes());
 
-        log.warn("Authentication error: {}", ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        log.warn("Account locked: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.LOCKED).body(body);
     }
 
-    /**
-     * Handle bad credentials specifically
-     */
+    // 🔹 Handle invalid token exception
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidTokenException(InvalidTokenException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", "Invalid Token");
+        body.put("message", ex.getMessage());
+
+        log.warn("Invalid token: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    // 🔹 Handle refresh token exception
+    @ExceptionHandler(RefreshTokenException.class)
+    public ResponseEntity<Map<String, Object>> handleRefreshTokenException(RefreshTokenException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "Refresh Token Error");
+        body.put("message", ex.getMessage());
+
+        log.warn("Refresh token error: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    // 🔹 Handle invalid credentials exception
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidCredentialsException(InvalidCredentialsException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", "Authentication Failed");
+        body.put("message", ex.getMessage());
+
+        log.warn("Invalid credentials: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    // 🔹 Handle bad credentials
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(
-            BadCredentialsException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                "Invalid email or password",
-                "INVALID_CREDENTIALS",
-                HttpStatus.UNAUTHORIZED,
-                request.getDescription(false)
-        );
+    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadCredentialsException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", "Authentication Failed");
+        body.put("message", "Invalid email or password");
 
-        log.warn("Invalid credentials attempt from: {}", request.getRemoteUser());
-        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        log.warn("Bad credentials: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
-    /**
-     * Handle access denied exceptions
-     */
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDeniedException(
-            AccessDeniedException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                "Access denied. Insufficient permissions.",
-                "ACCESS_DENIED",
-                HttpStatus.FORBIDDEN,
-                request.getDescription(false)
-        );
-
-        log.warn("Access denied for user: {} on path: {}", request.getRemoteUser(), request.getDescription(false));
-        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
-    }
-
-    /**
-     * Handle user not found exceptions
-     */
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleUserNotFoundException(
-            UserNotFoundException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                ex.getMessage(),
-                "USER_NOT_FOUND",
-                HttpStatus.NOT_FOUND,
-                request.getDescription(false)
-        );
+    // 🔹 Handle user not found
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleUsernameNotFoundException(UsernameNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.NOT_FOUND.value());
+        body.put("error", "User Not Found");
+        body.put("message", ex.getMessage());
 
         log.warn("User not found: {}", ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
-    /**
-     * Handle duplicate resource exceptions
-     */
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<Map<String, Object>> handleDuplicateResourceException(
-            DuplicateResourceException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                ex.getMessage(),
-                "DUPLICATE_RESOURCE",
-                HttpStatus.CONFLICT,
-                request.getDescription(false)
-        );
+    // 🔹 Handle account disabled
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<Map<String, Object>> handleDisabledException(DisabledException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "Account Disabled");
+        body.put("message", "Account has been disabled. Please contact support.");
 
-        log.warn("Duplicate resource error: {}", ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+        log.warn("Account disabled: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
-    /**
-     * Handle role validation exceptions
-     */
-    @ExceptionHandler(InvalidRoleException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidRoleException(
-            InvalidRoleException ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                ex.getMessage(),
-                "INVALID_ROLE",
-                HttpStatus.BAD_REQUEST,
-                request.getDescription(false)
-        );
+    // 🔹 Handle account locked (Spring Security)
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<Map<String, Object>> handleLockedException(LockedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.LOCKED.value());
+        body.put("error", "Account Locked");
+        body.put("message", "Account has been locked. Please try again later.");
 
-        log.warn("Invalid role error: {}", ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        log.warn("Account locked: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.LOCKED).body(body);
     }
 
-    /**
-     * Handle all other exceptions
-     */
+    // 🔹 Handle general authentication exceptions
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", "Authentication Error");
+        body.put("message", "Authentication failed: " + ex.getMessage());
+
+        log.warn("Authentication error: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    // 🔹 Handle null pointer or role-related issues
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<Map<String, Object>> handleNullPointerException(NullPointerException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put("error", "Null Pointer Exception");
+        body.put("message", "An internal error occurred. Please contact support.");
+
+        // 🔸 Log the full stack trace for debugging
+        log.error("NullPointerException occurred: ", ex);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    // 🔹 Handle all other runtime exceptions
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put("error", "Runtime Error");
+        body.put("message", ex.getMessage());
+
+        log.error("RuntimeException: ", ex);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    // 🔹 Catch-all for unexpected errors
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGlobalException(
-            Exception ex, WebRequest request) {
-        
-        Map<String, Object> errorResponse = createErrorResponse(
-                "An unexpected error occurred. Please try again later.",
-                "INTERNAL_SERVER_ERROR",
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                request.getDescription(false)
-        );
+    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put("error", "Unexpected Error");
+        body.put("message", "An unexpected error occurred. Please contact support.");
 
-        log.error("Unexpected error: {}", ex.getMessage(), ex);
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+        log.error("Unexpected error: ", ex);
 
-    /**
-     * Create standardized error response
-     */
-    private Map<String, Object> createErrorResponse(String message, String errorCode, 
-                                                    HttpStatus status, String path) {
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("timestamp", LocalDateTime.now());
-        errorResponse.put("status", status.value());
-        errorResponse.put("error", status.getReasonPhrase());
-        errorResponse.put("message", message);
-        errorResponse.put("errorCode", errorCode);
-        errorResponse.put("path", path.replace("uri=", ""));
-        return errorResponse;
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
+

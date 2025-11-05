@@ -1,80 +1,74 @@
 package com.TenX.Automobile.security;
 
-import com.TenX.Automobile.entity.User;
-import com.TenX.Automobile.service.JwtService;
-import com.TenX.Automobile.service.UserService;
+import com.TenX.Automobile.security.constants.SecurityConstants;
+import com.TenX.Automobile.security.jwt.JwtTokenProvider;
+import com.TenX.Automobile.service.MyUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Optional;
+import java.util.Arrays;
 
 /**
- * Enterprise JWT Authentication Filter
- * Handles JWT token extraction from cookies and Authorization header
- * Validates tokens and sets authentication context
+ * JWT Authentication Filter - Validates JWT tokens on each request
+ * Extracts and validates JWT token, then sets authentication in SecurityContext
  */
-@Component
 @Slf4j
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
-    private final UserService userService;
-
-    public JwtAuthenticationFilter(JwtService jwtService, @Lazy UserService userService) {
-        this.jwtService = jwtService;
-        this.userService = userService;
-    }
+    private final JwtTokenProvider jwtTokenProvider;
+    private final MyUserDetailsService userDetailsService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            String token = extractToken(request);
+            // Extract JWT token from request header
+            String jwt = extractJwtFromCookies(request);
 
-            if (token != null && jwtService.isTokenValid(token)) {
-                String email = jwtService.extractEmail(token);
+            if (jwt!=null && jwtTokenProvider.validateToken(jwt)) {
+                // Extract user email from token
+                String email = jwtTokenProvider.getEmailFromToken(jwt);
 
-                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Load user details from database
-                    Optional<User> userOptional = userService.findByEmail(email);
-                    
-                    if (userOptional.isPresent()) {
-                        User user = userOptional.get();
-                        
-                        // Validate token for this specific user
-                        if (jwtService.isTokenValid(token, user)) {
-                            UsernamePasswordAuthenticationToken authToken =
-                                    new UsernamePasswordAuthenticationToken(
-                                            user,
-                                            null,
-                                            user.getAuthorities()
-                                    );
-                            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                            SecurityContextHolder.getContext().setAuthentication(authToken);
-                            
-                            log.debug("Successfully authenticated user: {} with role: {}", 
-                                    user.getEmail(), user.getRole());
-                        }
-                    } else {
-                        log.warn("User not found for email: {}", email);
-                    }
-                }
+                // Load user details
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                // Create authentication token
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+
+                // Set additional details
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // Set authentication in security context
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                log.debug("Successfully authenticated user: {} with roles: {}", 
+                        email, userDetails.getAuthorities());
             }
-        } catch (Exception e) {
-            log.error("Cannot set user authentication: {}", e.getMessage());
+        } catch (Exception ex) {
+            log.error("Cannot set user authentication: {}", ex.getMessage());
+            // Clear security context on error
             SecurityContextHolder.clearContext();
         }
 
@@ -82,44 +76,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extract JWT token from request (cookie or Authorization header)
+     * Extract JWT token from HttpOnly cookie named "accessToken"
      */
-    private String extractToken(HttpServletRequest request) {
-        // First try Authorization header
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
+    private String extractJwtFromCookies(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
         }
 
-        // Then try cookie
-        return extractTokenFromCookie(request);
+        return Arrays.stream(request.getCookies())
+                .filter(cookie -> "accessToken".equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
-
     /**
-     * Extract JWT token from cookies
-     */
-    private String extractTokenFromCookie(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("jwt".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Skip filter for public endpoints
+     * Skip filter for public URLs
      */
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.equals("/api/auth/login") || 
-               path.equals("/api/auth/signup") ||
-               path.startsWith("/public/") ||
-               path.equals("/actuator/health") ||
-               path.equals("/error");
+        
+        // Skip JWT filter for public endpoints
+        for (String publicUrl : SecurityConstants.PUBLIC_URLS) {
+            if (path.matches(publicUrl.replace("**", ".*"))) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
