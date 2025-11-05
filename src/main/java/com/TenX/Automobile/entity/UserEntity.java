@@ -63,11 +63,8 @@ public class UserEntity implements UserDetails {
     @Column(name="national_id")
     private String nationalId;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name="user_profile_images" , joinColumns = @JoinColumn(name="user_id") )
     @Column(name="profile_image_url")
-    @Builder.Default
-    private List<String> profileImages = new ArrayList<>();
+    private String profileImageUrl;
 
     @Column(name="phone_number")
     private String phoneNumber;
