@@ -89,22 +89,6 @@ public class CustomerController {
     }
 
     /**
-     * View own service history (All authenticated users)
-     */
-    @GetMapping("/customer/services")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> getServiceHistory(Authentication authentication) {
-        log.info("Customer: Get service history for user: {}", authentication.getName());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Customer: Viewing service history");
-        response.put("user", authentication.getName());
-        
-        return ResponseEntity.ok(response);
-    }
-
-
-    /**
      * Update own profile (All authenticated users)
      */
     @PutMapping("/customer/profile")
@@ -133,21 +117,27 @@ public class CustomerController {
         }
     }
 
+
+    @GetMapping("/customer/dashboard/overview")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getOverview(Authentication authentication) {
+        log.info("Customer: Get overview for user: {}", authentication.getName());
+    }
+
     /**
-     * Submit feedback (All authenticated users)
+     * View own service history (All authenticated users)
      */
-    @PostMapping("/v1/customer/feedback")
+    @GetMapping("/customer/services")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> submitFeedback(
-            @RequestBody Map<String, String> feedback,
-            Authentication authentication) {
-        
-        log.info("Customer: Submit feedback for user: {}", authentication.getName());
-        
+    public ResponseEntity<Map<String, Object>> getServiceHistory(Authentication authentication) {
+        log.info("Customer: Get service history for user: {}", authentication.getName());
+
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Customer: Feedback submitted successfully");
+        response.put("message", "Customer: Viewing service history");
         response.put("user", authentication.getName());
-        
+
         return ResponseEntity.ok(response);
     }
+
+
 }
