@@ -3,9 +3,12 @@ package com.TenX.Automobile.controller;
 import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
 import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
+import com.TenX.Automobile.dto.request.VehicleRequest;
 import com.TenX.Automobile.dto.response.CustomerRegistrationResponse;
+import com.TenX.Automobile.dto.response.VehicleResponse;
 import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
+import com.TenX.Automobile.service.VehicleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +19,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Customer Controller - Registration and customer-specific operations
@@ -29,6 +34,7 @@ import java.util.Map;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final VehicleService vehicleService;
 
     /**
      * Public endpoint for customer registration
@@ -118,25 +124,118 @@ public class CustomerController {
     }
 
 
-    @GetMapping("/customer/dashboard/overview")
+    /**
+     * Get all vehicles for the authenticated customer
+     */
+    @GetMapping("/customer/vehicles")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<?> getOverview(Authentication authentication) {
-        log.info("Customer: Get overview for user: {}", authentication.getName());
+    public ResponseEntity<?> getVehicles(Authentication authentication) {
+        try {
+            log.info("Customer: Get vehicles for user: {}", authentication.getName());
+            
+            List<VehicleResponse> vehicles = vehicleService.getCustomerVehicles(authentication.getName());
+            
+            return ResponseEntity.ok(vehicles);
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch customer vehicles: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching customer vehicles for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
     }
 
     /**
-     * View own service history (All authenticated users)
+     * Add a new vehicle for the authenticated customer
      */
-    @GetMapping("/customer/services")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> getServiceHistory(Authentication authentication) {
-        log.info("Customer: Get service history for user: {}", authentication.getName());
+    @PostMapping("/customer/vehicle")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> addVehicle(
+            @Valid @RequestBody VehicleRequest vehicleRequest,
+            Authentication authentication) {
+        try {
+            log.info("Customer: Add vehicle for user: {}", authentication.getName());
+            
+            VehicleResponse vehicle = vehicleService.addVehicle(authentication.getName(), vehicleRequest);
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(vehicle);
+        } catch (RuntimeException e) {
+            log.warn("Failed to add vehicle: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error adding vehicle for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Customer: Viewing service history");
-        response.put("user", authentication.getName());
+    /**
+     * Add a new vehicle for the authenticated customer (alternative endpoint)
+     */
+    @PostMapping("/customer/vehicles")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> addVehicleAlt(
+            @Valid @RequestBody VehicleRequest vehicleRequest,
+            Authentication authentication) {
+        return addVehicle(vehicleRequest, authentication);
+    }
 
-        return ResponseEntity.ok(response);
+    /**
+     * Update a vehicle for the authenticated customer
+     */
+    @PutMapping("/customer/vehicles/{id}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> updateVehicle(
+            @PathVariable("id") UUID vehicleId,
+            @Valid @RequestBody VehicleRequest vehicleRequest,
+            Authentication authentication) {
+        try {
+            log.info("Customer: Update vehicle {} for user: {}", vehicleId, authentication.getName());
+            
+            VehicleResponse vehicle = vehicleService.updateVehicle(
+                    authentication.getName(), 
+                    vehicleId, 
+                    vehicleRequest
+            );
+            
+            return ResponseEntity.ok(vehicle);
+        } catch (RuntimeException e) {
+            log.warn("Failed to update vehicle: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error updating vehicle {} for user: {}", vehicleId, authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Delete a vehicle for the authenticated customer
+     */
+    @DeleteMapping("/customer/vehicles/{id}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> deleteVehicle(
+            @PathVariable("id") UUID vehicleId,
+            Authentication authentication) {
+        try {
+            log.info("Customer: Delete vehicle {} for user: {}", vehicleId, authentication.getName());
+            
+            vehicleService.deleteVehicle(authentication.getName(), vehicleId);
+            
+            return ResponseEntity.ok(Map.of("message", "Vehicle deleted successfully"));
+        } catch (RuntimeException e) {
+            log.warn("Failed to delete vehicle: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error deleting vehicle {} for user: {}", vehicleId, authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
     }
 
 
