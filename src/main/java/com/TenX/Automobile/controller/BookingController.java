@@ -1,11 +1,16 @@
 package com.TenX.Automobile.controller;
 
+import com.TenX.Automobile.dto.request.ServiceBookingRequest;
 import com.TenX.Automobile.dto.response.AvailableSlotResponse;
+import com.TenX.Automobile.dto.response.ServiceBookingResponse;
 import com.TenX.Automobile.service.BookingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -57,5 +62,21 @@ public class BookingController {
         AvailableSlotResponse slot = bookingService.checkAvailability(date);
         
         return ResponseEntity.ok(slot);
+    }
+
+    /**
+     * Book a service for authenticated customer
+     * @param request Service booking request containing serviceId, arrivingDate, and vehicleIds
+     * @return ServiceBookingResponse with booking confirmation details
+     */
+    @PostMapping("/service")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<ServiceBookingResponse> bookService(@Valid @RequestBody ServiceBookingRequest request) {
+        
+        log.info("Book service request - serviceId: {}, arrivingDate: {}", request.getServiceId(), request.getArrivingDate());
+        
+        ServiceBookingResponse response = bookingService.bookService(request);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
