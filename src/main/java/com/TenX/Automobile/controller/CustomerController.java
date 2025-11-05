@@ -1,5 +1,7 @@
 package com.TenX.Automobile.controller;
 
+import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
+import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.dto.response.CustomerRegistrationResponse;
 import com.TenX.Automobile.entity.Customer;
@@ -68,15 +70,22 @@ public class CustomerController {
      */
     @GetMapping("/customer/profile")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
-        log.info("Customer: Get profile for user: {}", authentication.getName());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Customer: Viewing own profile");
-        response.put("user", authentication.getName());
-        response.put("authorities", authentication.getAuthorities());
-        
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> getProfile(Authentication authentication) {
+        try {
+            log.info("Customer: Get profile for user: {}", authentication.getName());
+            
+            CustomerProfileResponse profile = customerService.getCustomerProfile(authentication.getName());
+            
+            return ResponseEntity.ok(profile);
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch customer profile: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching customer profile for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
     }
 
     /**
@@ -94,41 +103,34 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Book appointment (All authenticated users)
-     */
-    @PostMapping("/v1/customer/appointments")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> bookAppointment(
-            @RequestBody Map<String, Object> appointmentData,
-            Authentication authentication) {
-        
-        log.info("Customer: Book appointment for user: {}", authentication.getName());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Customer: Appointment booked successfully");
-        response.put("user", authentication.getName());
-        response.put("appointmentData", appointmentData);
-        
-        return ResponseEntity.ok(response);
-    }
 
     /**
      * Update own profile (All authenticated users)
      */
     @PutMapping("/customer/profile")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> updateProfile(
-            @RequestBody Map<String, Object> profileData,
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> updateProfile(
+            @Valid @RequestBody CustomerProfileUpdateRequest profileUpdateRequest,
             Authentication authentication) {
         
-        log.info("Customer: Update profile for user: {}", authentication.getName());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Customer: Profile updated successfully");
-        response.put("user", authentication.getName());
-        
-        return ResponseEntity.ok(response);
+        try {
+            log.info("Customer: Update profile for user: {}", authentication.getName());
+            
+            CustomerProfileResponse updatedProfile = customerService.updateCustomerProfile(
+                    authentication.getName(), 
+                    profileUpdateRequest
+            );
+            
+            return ResponseEntity.ok(updatedProfile);
+        } catch (RuntimeException e) {
+            log.warn("Failed to update customer profile: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error updating customer profile for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
     }
 
     /**
