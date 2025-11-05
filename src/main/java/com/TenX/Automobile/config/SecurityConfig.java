@@ -69,11 +69,8 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs").permitAll()
                         
                         // Testing endpoint - REMOVE IN PRODUCTION!
-                        .requestMatchers("/api/notifications/test").permitAll()
-                        .requestMatchers("/api/notifications/{noti_id}").permitAll()
-                        .requestMatchers("/api/notifications/unread").permitAll()
-                        .requestMatchers("/api/notifications").permitAll()
-                  .requestMatchers("api/notifications/read-all").permitAll()
+                        .requestMatchers("/api/services").permitAll()
+
 
                         
                         // Admin endpoints - ADMIN role only

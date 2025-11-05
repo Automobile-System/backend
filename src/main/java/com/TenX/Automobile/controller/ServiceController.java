@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/v1/services")
+@RequestMapping("/api/services")
 @RequiredArgsConstructor
 @Slf4j
 public class ServiceController {
@@ -31,13 +31,11 @@ public class ServiceController {
     private final ServiceEntityService serviceEntityService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Service>> getAllServices() {
         return ResponseEntity.ok(serviceEntityService.findAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getService(@PathVariable Long id) {
         Optional<Service> s = serviceEntityService.findById(id);
         if (s.isPresent()) return ResponseEntity.ok(s.get());
@@ -45,7 +43,7 @@ public class ServiceController {
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') and isAuthenticated()")
     public ResponseEntity<?> createService(@Valid @RequestBody Service service) {
         try {
             Service saved = serviceEntityService.create(service);
@@ -57,7 +55,7 @@ public class ServiceController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') and isAuthenticated()")
     public ResponseEntity<?> updateService(@PathVariable Long id, @RequestBody Service service) {
         Optional<Service> opt = serviceEntityService.findById(id);
         if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Service not found");
@@ -66,7 +64,7 @@ public class ServiceController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') and isAuthenticated()")
     public ResponseEntity<?> deleteService(@PathVariable Long id) {
         Optional<Service> opt = serviceEntityService.findById(id);
         if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Service not found");
