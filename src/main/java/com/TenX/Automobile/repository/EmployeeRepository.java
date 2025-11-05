@@ -29,4 +29,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         @Param("specialty") String specialty, 
         @Param("date") LocalDateTime date
     );
+
+    @Query("SELECT e FROM Employee e WHERE " +
+           "(:specialty IS NULL OR LOWER(e.specialty) = LOWER(:specialty)) AND " +
+           "(:startDate IS NULL OR e.createdAt >= :startDate) AND " +
+           "(:endDate IS NULL OR e.createdAt <= :endDate) " +
+           "ORDER BY e.createdAt DESC")
+    List<Employee> findEmployeesByDateRange(
+        @Param("specialty") String specialty,
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
+    );
 }

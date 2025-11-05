@@ -98,6 +98,18 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
+    public List<EmployeeResponse> getEmployeesByDateRange(String specialty, LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Fetching employees with date range - specialty: {}, startDate: {}, endDate: {}", specialty, startDate, endDate);
+
+        List<Employee> employees = employeeRepository.findEmployeesByDateRange(specialty, startDate, endDate);
+
+        log.info("Found {} employees matching the filters", employees.size());
+
+        return employees.stream()
+                .map(this::mapToEmployeeResponse)
+                .collect(Collectors.toList());
+    }
+
     private EmployeeResponse mapToEmployeeResponse(Employee employee) {
         return EmployeeResponse.builder()
                 .id(employee.getId())

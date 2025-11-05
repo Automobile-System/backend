@@ -46,6 +46,26 @@ public class StaffController {
     }
 
     /**
+     * Get all available staff with date range filters
+     * @param specialty Optional filter by specialty
+     * @param startDate Optional start date filter
+     * @param endDate Optional end date filter
+     * @return List of employees matching the filters
+     */
+    @GetMapping("/range")
+    public ResponseEntity<List<EmployeeResponse>> getStaffByDateRange(
+            @RequestParam(required = false) String specialty,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        
+        log.info("Get staff by date range - specialty: {}, startDate: {}, endDate: {}", specialty, startDate, endDate);
+        
+        List<EmployeeResponse> employees = employeeService.getEmployeesByDateRange(specialty, startDate, endDate);
+        
+        return ResponseEntity.ok(employees);
+    }
+
+    /**
      * View assigned tasks (Staff, Manager, Admin)
      */
     @GetMapping("/tasks")
