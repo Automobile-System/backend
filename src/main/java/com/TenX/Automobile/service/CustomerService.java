@@ -4,13 +4,18 @@ import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
 import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
+import com.TenX.Automobile.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
+import com.TenX.Automobile.dto.response.ServiceListResponse;
 import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.entity.Project;
+import com.TenX.Automobile.entity.TimeLog;
+import com.TenX.Automobile.entity.Vehicle;
 import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.CustomerRepository;
 import com.TenX.Automobile.repository.ProjectRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
+import com.TenX.Automobile.repository.TimeLogRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +37,7 @@ public class CustomerService {
     private final PasswordEncoder passwordEncoder;
     private final ServiceRepository serviceRepository;
     private final ProjectRepository projectRepository;
+    private final TimeLogRepository timeLogRepository;
 
     public Customer registerCustomer(CustomerRegistrationRequest customerRegistrationRequest){
         log.info("Customer Registration Request: {}", customerRegistrationRequest.getEmail());
@@ -362,6 +368,135 @@ public class CustomerService {
      */
     private String getMonthKey(LocalDateTime date) {
         return date.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+    }
+
+    /**
+     * Get all services for a customer with optional status filter
+     */
+    public List<ServiceListResponse> getCustomerServices(String email, String status) {
+        log.info("Getting services for customer: {}, status filter: {}", email, status);
+
+        Customer customer = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
+
+        List<com.TenX.Automobile.entity.Service> services;
+
+        if (status == null || status.isEmpty()) {
+            services = serviceRepository.findAllByCustomerId(customer.getId());
+        } else if ("active".equalsIgnoreCase(status)) {
+            services = serviceRepository.findActiveServicesByCustomerId(customer.getId());
+        } else if ("completed".equalsIgnoreCase(status)) {
+            services = serviceRepository.findCompletedServicesByCustomerId(customer.getId());
+        } else if ("upcoming".equalsIgnoreCase(status)) {
+            services = serviceRepository.findUpcomingServicesByCustomerId(customer.getId(), LocalDateTime.now());
+        } else {
+            throw new IllegalArgumentException("Invalid status filter. Use: active, completed, or upcoming");
+        }
+
+        log.info("Found {} services for customer", services.size());
+
+        return services.stream()
+                .map(this::mapToServiceListResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get detailed information about a specific service
+     */
+    public ServiceDetailResponse getServiceDetails(String email, Long serviceId) {
+        log.info("Getting service details - email: {}, serviceId: {}", email, serviceId);
+
+        Customer customer = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
+
+        com.TenX.Automobile.entity.Service service = serviceRepository.findByIdAndCustomerId(serviceId, customer.getId())
+                .orElseThrow(() -> new RuntimeException("Service not found or doesn't belong to customer"));
+
+        // Get time logs for assigned employees
+        List<TimeLog> timeLogs = timeLogRepository.findByJobId(serviceId);
+
+        log.info("Service found - title: {}, status: {}, assigned employees: {}", 
+                service.getTitle(), service.getStatus(), timeLogs.size());
+
+        return mapToServiceDetailResponse(service, timeLogs);
+    }
+
+    private ServiceListResponse mapToServiceListResponse(com.TenX.Automobile.entity.Service service) {
+        // Get the first vehicle (since we now only allow one vehicle per booking)
+        Vehicle vehicle = service.getVehicles().isEmpty() ? null : service.getVehicles().get(0);
+
+        return ServiceListResponse.builder()
+                .serviceId(service.getJobId())
+                .title(service.getTitle())
+                .description(service.getDescription())
+                .category(service.getCategory())
+                .status(service.getStatus())
+                .arrivingDate(service.getArrivingDate())
+                .cost(service.getCost())
+                .estimatedHours(service.getEstimatedHours())
+                .vehicleRegistration(vehicle != null ? vehicle.getRegistration_No() : null)
+                .vehicleBrand(vehicle != null ? vehicle.getBrand_name() : null)
+                .vehicleModel(vehicle != null ? vehicle.getModel() : null)
+                .bookedAt(service.getCreatedAt())
+                .build();
+    }
+
+    private ServiceDetailResponse mapToServiceDetailResponse(com.TenX.Automobile.entity.Service service, List<TimeLog> timeLogs) {
+        // Get vehicle information
+        Vehicle vehicle = service.getVehicles().isEmpty() ? null : service.getVehicles().get(0);
+        ServiceDetailResponse.VehicleInfo vehicleInfo = null;
+        if (vehicle != null) {
+            vehicleInfo = ServiceDetailResponse.VehicleInfo.builder()
+                    .registrationNo(vehicle.getRegistration_No())
+                    .brandName(vehicle.getBrand_name())
+                    .model(vehicle.getModel())
+                    .capacity(vehicle.getCapacity())
+                    .build();
+        }
+
+        // Map tasks
+        List<ServiceDetailResponse.TaskInfo> taskInfos = service.getTasks().stream()
+                .map(task -> ServiceDetailResponse.TaskInfo.builder()
+                        .taskId(task.getTId())
+                        .taskTitle(task.getTaskTitle())
+                        .taskDescription(task.getTaskDescription())
+                        .status(task.getStatus())
+                        .estimatedHours(task.getEstimatedHours())
+                        .completedAt(task.getCompletedAt())
+                        .createdAt(task.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        // Map assigned employees from time logs
+        List<ServiceDetailResponse.EmployeeInfo> employeeInfos = timeLogs.stream()
+                .map(timeLog -> ServiceDetailResponse.EmployeeInfo.builder()
+                        .employeeId(timeLog.getEmployee().getEmployeeId())
+                        .firstName(timeLog.getEmployee().getFirstName())
+                        .lastName(timeLog.getEmployee().getLastName())
+                        .specialty(timeLog.getEmployee().getSpecialty())
+                        .hoursWorked(timeLog.getHoursWorked())
+                        .workDescription(timeLog.getDescription())
+                        .startTime(timeLog.getStartTime())
+                        .endTime(timeLog.getEndTime())
+                        .build())
+                .collect(Collectors.toList());
+
+        return ServiceDetailResponse.builder()
+                .serviceId(service.getJobId())
+                .title(service.getTitle())
+                .description(service.getDescription())
+                .category(service.getCategory())
+                .status(service.getStatus())
+                .arrivingDate(service.getArrivingDate())
+                .cost(service.getCost())
+                .estimatedHours(service.getEstimatedHours())
+                .imageUrl(service.getImageUrl())
+                .vehicle(vehicleInfo)
+                .tasks(taskInfos)
+                .assignedEmployees(employeeInfos)
+                .bookedAt(service.getCreatedAt())
+                .updatedAt(service.getUpdatedAt())
+                .build();
     }
 }
 

@@ -3,8 +3,10 @@ package com.TenX.Automobile.repository;
 import com.TenX.Automobile.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,4 +20,24 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
     @Query("Select e.employeeId from Employee e")
     List<String> getAllEmployeeIds();
+    
+    @Query("SELECT e FROM Employee e WHERE " +
+           "(:specialty IS NULL OR LOWER(e.specialty) = LOWER(:specialty)) AND " +
+           "(:date IS NULL OR DATE(e.createdAt) = DATE(:date)) " +
+           "ORDER BY e.createdAt DESC")
+    List<Employee> findEmployeesByFilters(
+        @Param("specialty") String specialty, 
+        @Param("date") LocalDateTime date
+    );
+
+    @Query("SELECT e FROM Employee e WHERE " +
+           "(:specialty IS NULL OR LOWER(e.specialty) = LOWER(:specialty)) AND " +
+           "(:startDate IS NULL OR e.createdAt >= :startDate) AND " +
+           "(:endDate IS NULL OR e.createdAt <= :endDate) " +
+           "ORDER BY e.createdAt DESC")
+    List<Employee> findEmployeesByDateRange(
+        @Param("specialty") String specialty,
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
+    );
 }

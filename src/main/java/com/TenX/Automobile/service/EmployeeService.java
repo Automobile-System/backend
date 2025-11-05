@@ -1,6 +1,7 @@
 package com.TenX.Automobile.service;
 
 import com.TenX.Automobile.dto.request.EmployeeRegistrationRequest;
+import com.TenX.Automobile.dto.response.EmployeeResponse;
 import com.TenX.Automobile.entity.Employee;
 import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.EmployeeRepository;
@@ -10,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -81,5 +84,47 @@ public class EmployeeService {
             }
         }
         return numbers.size() +1;
+    }
+
+    public List<EmployeeResponse> getEmployees(String specialty, LocalDateTime date) {
+        log.info("Fetching employees with filters - specialty: {}, date: {}", specialty, date);
+
+        List<Employee> employees = employeeRepository.findEmployeesByFilters(specialty, date);
+
+        log.info("Found {} employees matching the filters", employees.size());
+
+        return employees.stream()
+                .map(this::mapToEmployeeResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<EmployeeResponse> getEmployeesByDateRange(String specialty, LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Fetching employees with date range - specialty: {}, startDate: {}, endDate: {}", specialty, startDate, endDate);
+
+        List<Employee> employees = employeeRepository.findEmployeesByDateRange(specialty, startDate, endDate);
+
+        log.info("Found {} employees matching the filters", employees.size());
+
+        return employees.stream()
+                .map(this::mapToEmployeeResponse)
+                .collect(Collectors.toList());
+    }
+
+    private EmployeeResponse mapToEmployeeResponse(Employee employee) {
+        return EmployeeResponse.builder()
+                .id(employee.getId())
+                .employeeId(employee.getEmployeeId())
+                .email(employee.getEmail())
+                .firstName(employee.getFirstName())
+                .lastName(employee.getLastName())
+                .nationalId(employee.getNationalId())
+                .phoneNumber(employee.getPhoneNumber())
+                .profileImageUrl(employee.getProfileImageUrl())
+                .specialty(employee.getSpecialty())
+                .roles(employee.getRoles())
+                .joinedDate(employee.getCreatedAt())
+                .lastLoginAt(employee.getLastLoginAt())
+                .enabled(employee.isEnabled())
+                .build();
     }
 }
