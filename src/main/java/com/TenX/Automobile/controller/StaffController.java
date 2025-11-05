@@ -1,12 +1,17 @@
 package com.TenX.Automobile.controller;
 
+import com.TenX.Automobile.dto.response.EmployeeResponse;
+import com.TenX.Automobile.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,10 +20,30 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/staff")
+@RequestMapping("/api/staff")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class StaffController {
+
+    private final EmployeeService employeeService;
+
+    /**
+     * Get all available staff with filters
+     * @param specialty Optional filter by specialty
+     * @param date Optional filter by joined date
+     * @return List of employees matching the filters
+     */
+    @GetMapping
+    public ResponseEntity<List<EmployeeResponse>> getAllStaff(
+            @RequestParam(required = false) String specialty,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date) {
+        
+        log.info("Get all staff - specialty: {}, date: {}", specialty, date);
+        
+        List<EmployeeResponse> employees = employeeService.getEmployees(specialty, date);
+        
+        return ResponseEntity.ok(employees);
+    }
 
     /**
      * View assigned tasks (Staff, Manager, Admin)
