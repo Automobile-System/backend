@@ -1,6 +1,7 @@
 package com.TenX.Automobile.repository;
 
 import com.TenX.Automobile.entity.Employee;
+import com.TenX.Automobile.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -40,4 +41,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate
     );
+    
+    @Query("SELECT e FROM Employee e WHERE :role MEMBER OF e.roles")
+    List<Employee> findByRole(@Param("role") Role role);
+    
+    @Query("SELECT COUNT(e) FROM Employee e WHERE :role MEMBER OF e.roles")
+    Long countByRole(@Param("role") Role role);
+    
+    @Query("SELECT COUNT(e) FROM Employee e WHERE :role MEMBER OF e.roles AND e.enabled = true")
+    Long countActiveByRole(@Param("role") Role role);
 }
