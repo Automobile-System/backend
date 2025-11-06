@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,7 +18,20 @@ public interface ManageAssignJobRepository extends JpaRepository<ManageAssignJob
     List<ManageAssignJob> findByEmployee_Id(UUID employeeId);
     List<ManageAssignJob> findByManager_IdAndEmployee_Id(UUID managerId, UUID employeeId);
     boolean existsByJob_JobId(Long jobId);
-    
+
+    @Query("SELECT m FROM ManageAssignJob m WHERE m.employee.id = :employeeId")
+    List<ManageAssignJob> findByEmployeeId(@Param("employeeId") UUID employeeId);
+
+    @Query("SELECT m FROM ManageAssignJob m WHERE m.job.jobId = :jobId")
+    List<ManageAssignJob> findByJobJobId(@Param("jobId") Long jobId);
+
+    @Query("SELECT COUNT(m) FROM ManageAssignJob m WHERE m.employee.id = :employeeId AND " +
+           "(m.job.status IS NULL OR m.job.status NOT IN ('COMPLETED', 'CANCELLED'))")
+    Long countActiveJobsByEmployeeId(@Param("employeeId") UUID employeeId);
+
+    @Query("SELECT m FROM ManageAssignJob m WHERE m.employee.id = :employeeId AND m.job.status = 'COMPLETED' " +
+           "ORDER BY m.job.updatedAt DESC")
+    List<ManageAssignJob> findCompletedJobsByEmployeeId(@Param("employeeId") UUID employeeId);
     /**
      * Count jobs assigned to an employee in current month
      */
@@ -26,7 +40,10 @@ public interface ManageAssignJobRepository extends JpaRepository<ManageAssignJob
            "AND YEAR(maj.created_at) = YEAR(CURRENT_DATE) " +
            "AND MONTH(maj.created_at) = MONTH(CURRENT_DATE)")
     Long countJobsAssignedThisMonth(@Param("employeeId") UUID employeeId);
-    
+
+    @Query("SELECT m FROM ManageAssignJob m WHERE m.job.arrivingDate >= :startDate AND m.job.arrivingDate <= :endDate")
+    List<ManageAssignJob> findJobsByDateRange(@Param("startDate") LocalDateTime startDate,
+                                               @Param("endDate") LocalDateTime endDate);
     /**
      * Count all jobs assigned to an employee
      */
@@ -34,3 +51,4 @@ public interface ManageAssignJobRepository extends JpaRepository<ManageAssignJob
            "WHERE maj.employee.id = :employeeId")
     Long countTotalJobsAssigned(@Param("employeeId") UUID employeeId);
 }
+

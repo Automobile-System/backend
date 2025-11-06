@@ -26,7 +26,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/employees")
+@RequestMapping("/api/employee/auth")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -35,13 +35,13 @@ public class EmployeeController {
     private final EmployeeService employeeService;
     private final NotificationService notificationService;
 
-    // Existing registration endpoint - maintaining backward compatibility
-    // Note: This endpoint is now at /api/employees/auth/signup (was /api/employee/auth/signup)
-    // If old endpoint needs to work, add a separate controller or use @RequestMapping on method level
-    @PostMapping("/auth/signup")
+
+    @PostMapping("/signup")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') AND isAuthenticated()")
     public ResponseEntity<?> addEmployee(@Valid @RequestBody EmployeeRegistrationRequest employeeRegistrationRequest) {
         try{
             log.info("Employee Registration Request:{}", employeeRegistrationRequest.getEmail());
+
 
             Employee employee = employeeService.addEmployee(employeeRegistrationRequest);
             EmployeeRegistrationResponse employeeRegistrationResponse = EmployeeRegistrationResponse.builder()
@@ -71,9 +71,9 @@ public class EmployeeController {
         }
     }
 
-    // Existing profile endpoint - kept for backward compatibility
     @GetMapping("/staff/profile")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
+//    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Employee: Get profile for user: {}", authentication.getName());
 
@@ -122,12 +122,12 @@ public class EmployeeController {
     public ResponseEntity<List<EmployeeNotificationResponse>> getMyNotifications(Authentication authentication) {
         UUID employeeId = getUserIdFromAuth(authentication);
         log.info("Fetching unread notifications for employee ID: {}", employeeId);
-        
+
         List<Notification> notifications = notificationService.getUnreadNotifications(employeeId);
         List<EmployeeNotificationResponse> response = notifications.stream()
                 .map(this::convertToEmployeeNotificationResponse)
                 .collect(Collectors.toList());
-        
+
         return ResponseEntity.ok(response);
     }
 

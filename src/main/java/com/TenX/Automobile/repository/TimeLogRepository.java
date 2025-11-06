@@ -13,8 +13,11 @@ import java.util.UUID;
 
 @Repository
 public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
+
+    @Query("SELECT tl FROM TimeLog tl WHERE tl.job.jobId = :jobId")
+    List<TimeLog> findByJobId(@Param("jobId") Long jobId);
     Optional<TimeLog> findByJob_JobId(Long jobId);
-    
+
     /**
      * Find all time logs for an employee via ManageAssignJob
      * Filters by date range if provided
@@ -31,7 +34,7 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate
     );
-    
+
     /**
      * Calculate total hours for an employee in current week
      */

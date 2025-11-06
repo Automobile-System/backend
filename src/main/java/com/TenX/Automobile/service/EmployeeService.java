@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -62,7 +63,7 @@ public class EmployeeService {
         log.info("Fetching employee profile for ID: {}", employeeId);
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
-        
+
         return convertToProfileResponse(employee);
     }
 
@@ -98,7 +99,7 @@ public class EmployeeService {
 
         Employee updatedEmployee = employeeRepository.save(employee);
         log.info("Employee profile updated successfully for ID: {}", employeeId);
-        
+
         return convertToProfileResponse(updatedEmployee);
     }
 
@@ -108,7 +109,7 @@ public class EmployeeService {
     private EmployeeProfileResponse convertToProfileResponse(Employee employee) {
         String fullName = (employee.getFirstName() != null ? employee.getFirstName() : "") +
                          (employee.getLastName() != null ? " " + employee.getLastName() : "").trim();
-        
+
         return EmployeeProfileResponse.builder()
                 .id(employee.getId())
                 .name(fullName.isEmpty() ? null : fullName)

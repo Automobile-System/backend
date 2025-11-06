@@ -17,7 +17,7 @@ public class VehicleResponse {
     private String registrationNo;
     private String brandName;
     private String model;
-    private Integer capacity;
+    private int capacity;
     private String createdBy;
     private UUID customerId;
     private String customerEmail;
