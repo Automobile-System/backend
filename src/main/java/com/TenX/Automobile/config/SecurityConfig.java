@@ -65,20 +65,15 @@ public class SecurityConfig {
                         .requestMatchers(SecurityConstants.PUBLIC_URLS).permitAll()
                         .requestMatchers("/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("api/services/**").permitAll()
                         
                         // Admin endpoints - ADMIN role only
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        
-                        // Manager endpoints - ADMIN and MANAGER roles
-                        .requestMatchers("/api/v1/manager/**").hasAnyRole("ADMIN", "MANAGER")
-                        
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Staff endpoints - ADMIN, MANAGER, and STAFF roles
-                        .requestMatchers("/api/staff/**").hasAnyRole("ADMIN", "MANAGER", "STAFF")
-                        
-                        // Customer endpoints - All authenticated users
-                        .requestMatchers("/api/customer/**").hasAnyRole("ADMIN", "MANAGER", "STAFF", "CUSTOMER")
-                        
+                        .requestMatchers("/api/employee/**").hasAnyRole("ADMIN", "MANAGER", "STAFF")
+
+                        .requestMatchers("/api/customer/**").hasRole("CUSTOMER")
+
+                        .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
@@ -158,7 +153,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:4200",
-                "http://localhost:8080"
+                "http://localhost:8080",
+          "http://localhost:8081"
         ));
         
         // Allow all HTTP methods
