@@ -20,12 +20,14 @@ import java.util.Map;
 @RequestMapping("/api/employee/auth")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = "*")
 public class EmployeeController {
 
     private final EmployeeService employeeService;
 
 
     @PostMapping("/signup")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') AND isAuthenticated()")
     public ResponseEntity<?> addEmployee(@Valid @RequestBody EmployeeRegistrationRequest employeeRegistrationRequest) {
         try{
             log.info("Employee Registration Request:{}", employeeRegistrationRequest.getEmail());
@@ -61,7 +63,7 @@ public class EmployeeController {
 
     @GetMapping("/staff/profile")
 //    @PreAuthorize("isAuthenticated()")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
         log.info("Employee: Get profile for user: {}", authentication.getName());
 
@@ -72,4 +74,5 @@ public class EmployeeController {
 
         return ResponseEntity.ok(response);
     }
+
 }
