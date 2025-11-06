@@ -25,6 +25,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @PostMapping("/signup")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') AND isAuthenticated()")
     public ResponseEntity<?> addEmployee(@Valid @RequestBody EmployeeRegistrationRequest employeeRegistrationRequest) {
         try{
             log.info("Employee Registration Request:{}", employeeRegistrationRequest.getEmail());
