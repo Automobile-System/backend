@@ -5,20 +5,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TimeLogResponse {
+public class CalendarEventResponse {
     private Long id;
-    private LocalDate date;
-    private String taskTitle;
-    private String vehicleRegNo;
+    private String title;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private Double durationHours;
-    private String remarks; // description field from TimeLog
+    private String vehicleRegNo;
 }
+
