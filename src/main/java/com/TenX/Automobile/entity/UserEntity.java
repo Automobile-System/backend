@@ -85,8 +85,10 @@ public class UserEntity implements UserDetails {
     @Column(name = "updated_by")
     private String updatedBy;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
     @Enumerated(EnumType.STRING)
-    @Column(name="role")
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
