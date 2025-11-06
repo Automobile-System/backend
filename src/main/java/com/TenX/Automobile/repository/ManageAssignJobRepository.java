@@ -1,7 +1,9 @@
 package com.TenX.Automobile.repository;
 
+import com.TenX.Automobile.entity.Employee;
 import com.TenX.Automobile.entity.ManageAssignJob;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -50,5 +52,19 @@ public interface ManageAssignJobRepository extends JpaRepository<ManageAssignJob
     @Query("SELECT COUNT(maj) FROM ManageAssignJob maj " +
            "WHERE maj.employee.id = :employeeId")
     Long countTotalJobsAssigned(@Param("employeeId") UUID employeeId);
+
+    /**
+     * Delete all job assignments for an employee
+     */
+    @Modifying
+    @Query("DELETE FROM ManageAssignJob maj WHERE maj.employee = :employee")
+    void deleteByEmployee(@Param("employee") Employee employee);
+
+    /**
+     * Delete all job assignments by a manager
+     */
+    @Modifying
+    @Query("DELETE FROM ManageAssignJob maj WHERE maj.manager = :manager")
+    void deleteByManager(@Param("manager") Employee manager);
 }
 

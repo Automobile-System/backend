@@ -38,16 +38,17 @@ public class ManagerDashboardService {
         Long totalEmployees = employeeRepository.countByRole(Role.STAFF);
         Long availableEmployees = employeeRepository.countActiveByRole(Role.STAFF);
         
-        // Count ongoing services
-        List<com.TenX.Automobile.entity.Service> allServices = serviceRepository.findAll();
-        Long ongoingServicesCount = allServices.stream()
-            .filter(s -> s.getStatus() == null || !"COMPLETED".equals(s.getStatus()))
+        // Count ongoing services (SERVICE type jobs not completed)
+        List<Job> allJobs = jobRepository.findAll();
+        Long ongoingServicesCount = allJobs.stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                    (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
             .count();
         
-        // Count pending projects
-        List<Project> allProjects = projectRepository.findAll();
-        Long pendingProjectsCount = allProjects.stream()
-            .filter(p -> p.getStatus() == null || (!"COMPLETED".equals(p.getStatus()) && !"CANCELLED".equals(p.getStatus())))
+        // Count pending projects (PROJECT type jobs not completed)
+        Long pendingProjectsCount = allJobs.stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                    (j.getStatus() == null || (!"COMPLETED".equals(j.getStatus()) && !"CANCELLED".equals(j.getStatus()))))
             .count();
         
         // Calculate average completion time (mock - should calculate from actual data)
@@ -147,18 +148,27 @@ public class ManagerDashboardService {
             Job job = assignment.getJob();
             String serviceId = "KA-" + job.getJobId(); // Format as KA-1234
             String vehicle = "N/A";
-            if (!job.getVehicles().isEmpty()) {
-                Vehicle v = job.getVehicles().get(0);
+            if (job.getVehicle() != null) {
+                Vehicle v = job.getVehicle();
                 vehicle = v.getBrandName() + " " + v.getModel();
             }
             
             String serviceType = "Service";
-            if (job instanceof com.TenX.Automobile.entity.Service) {
-                com.TenX.Automobile.entity.Service serviceJob = (com.TenX.Automobile.entity.Service) job;
-                serviceType = serviceJob.getTitle() != null ? serviceJob.getTitle() : "Service";
-            } else if (job instanceof Project) {
-                Project projectJob = (Project) job;
-                serviceType = projectJob.getTitle() != null ? projectJob.getTitle() : "Project";
+            // Determine service type based on Job's type field
+            if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                // Look up service details
+                serviceRepository.findById(job.getTypeId()).ifPresent(service -> {
+                    // Use lambda-compatible approach - can't reassign serviceType directly
+                });
+                // Get service title from repository
+                serviceType = serviceRepository.findById(job.getTypeId())
+                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .orElse("Service");
+            } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                // Get project title from repository
+                serviceType = projectRepository.findById(job.getTypeId())
+                    .map(Project::getTitle)
+                    .orElse("Project");
             }
             
             String date = job.getUpdatedAt() != null ? 
@@ -219,13 +229,19 @@ public class ManagerDashboardService {
         service.setTitle(request.getServiceType());
         service.setDescription(request.getServiceNotes());
         service.setEstimatedHours(request.getEstimatedDurationHours());
-        service.setCost(request.getEstimatedPrice());
-        service.setStatus("PENDING");
-        service.setArrivingDate(request.getPreferredDate() != null && request.getPreferredTime() != null ?
+        service.setCost(request.getEstimatedPrice() != null ? request.getEstimatedPrice().doubleValue() : 0.0);
+        service = serviceRepository.save(service);
+        
+        // Create Job for this service
+        Job job = new Job();
+        job.setServiceType(service); // This sets type=SERVICE and typeId=serviceId
+        job.setVehicle(vehicle);
+        job.setStatus("PENDING");
+        job.setArrivingDate(request.getPreferredDate() != null && request.getPreferredTime() != null ?
             LocalDateTime.of(request.getPreferredDate(), request.getPreferredTime()) :
             LocalDateTime.now().plusDays(1));
-        service.addVehicle(vehicle);
-        service = serviceRepository.save(service);
+        job.setCost(request.getEstimatedPrice() != null ? java.math.BigDecimal.valueOf(request.getEstimatedPrice().doubleValue()) : java.math.BigDecimal.ZERO);
+        job = jobRepository.save(job);
         
         // Assign to employee if provided
         if (request.getAssignedEmployeeId() != null) {
@@ -235,7 +251,7 @@ public class ManagerDashboardService {
                 .orElseThrow(() -> new RuntimeException("Manager not found"));
             
             ManageAssignJob assignment = ManageAssignJob.builder()
-                .job(service)
+                .job(job)
                 .employee(employee)
                 .manager(manager)
                 .build();
@@ -244,7 +260,7 @@ public class ManagerDashboardService {
         
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Task created and added to schedule successfully.");
-        response.put("taskId", "task" + service.getJobId());
+        response.put("taskId", "task" + job.getJobId());
         return response;
     }
 
@@ -290,10 +306,18 @@ public class ManagerDashboardService {
         project.setDescription(request.getProjectDescription());
         project.setEstimatedHours(request.getSubTasks() != null ? 
             request.getSubTasks().stream().mapToDouble(CreateProjectRequest.SubTaskRequest::getHours).sum() : 0.0);
-        project.setCost(request.getTotalProjectCost());
+        project.setCost(request.getTotalProjectCost() != null ? request.getTotalProjectCost().doubleValue() : 0.0);
         project.setStatus("Discussion");
-        project.setArrivingDate(LocalDateTime.of(request.getStartDate(), java.time.LocalTime.of(9, 0)));
-        project.addVehicle(vehicle);
+        project = projectRepository.save(project);
+        
+        // Create Job for this project
+        Job job = new Job();
+        job.setProjectType(project); // This sets type=PROJECT and typeId=projectId
+        job.setVehicle(vehicle);
+        job.setStatus("Discussion");
+        job.setArrivingDate(LocalDateTime.of(request.getStartDate(), java.time.LocalTime.of(9, 0)));
+        job.setCost(request.getTotalProjectCost() != null ? request.getTotalProjectCost() : java.math.BigDecimal.ZERO);
+        job = jobRepository.save(job);
         
         // Create subtasks
         if (request.getSubTasks() != null) {
@@ -302,16 +326,16 @@ public class ManagerDashboardService {
                 task.setTaskTitle(subTaskReq.getName());
                 task.setEstimatedHours(subTaskReq.getHours());
                 task.setStatus("PENDING");
-                task.setProject(project); // Set project relationship
-                project.addTask(task); // This sets job relationship (since Project extends Job)
+                task.setProject(project);
+                project.addTask(task);
             }
+            // Save project with tasks
+            projectRepository.save(project);
         }
-        
-        project = projectRepository.save(project);
         
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Project created and added to board successfully.");
-        response.put("projectId", "proj" + project.getJobId());
+        response.put("projectId", "proj" + job.getJobId());
         return response;
     }
 
@@ -328,12 +352,22 @@ public class ManagerDashboardService {
             List<ProjectBoardResponse.ProjectSummary> summaries = entry.getValue().stream()
                 .map(p -> {
                     String customerName = "N/A";
-                    if (!p.getVehicles().isEmpty() && p.getVehicles().get(0).getCustomer() != null) {
-                        Customer customer = p.getVehicles().get(0).getCustomer();
-                        customerName = customer.getFirstName() + " " + customer.getLastName();
+                    Long jobId = null;
+                    
+                    // Find the Job associated with this project to get customer info
+                    Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, p.getProjectId());
+                    if (jobOpt.isPresent()) {
+                        Job job = jobOpt.get();
+                        jobId = job.getJobId();
+                        Vehicle vehicle = job.getVehicle();
+                        if (vehicle != null && vehicle.getCustomer() != null) {
+                            Customer customer = vehicle.getCustomer();
+                            customerName = customer.getFirstName() + " " + customer.getLastName();
+                        }
                     }
+                    
                     return ProjectBoardResponse.ProjectSummary.builder()
-                        .id("proj" + p.getJobId())
+                        .id("proj" + (jobId != null ? jobId : p.getProjectId()))
                         .title(p.getTitle())
                         .customer(customerName)
                         .build();
@@ -411,12 +445,16 @@ public class ManagerDashboardService {
                 if (dayIndex >= 0 && dayIndex < days.length) {
                     String taskType = "Service";
                     Job job = assignment.getJob();
-                    if (job instanceof com.TenX.Automobile.entity.Service) {
-                        com.TenX.Automobile.entity.Service serviceJob = (com.TenX.Automobile.entity.Service) job;
-                        taskType = serviceJob.getTitle() != null ? serviceJob.getTitle() : "Service";
-                    } else if (job instanceof Project) {
-                        Project projectJob = (Project) job;
-                        taskType = projectJob.getTitle() != null ? projectJob.getTitle() : "Project";
+                    
+                    // Determine task type based on Job's type field
+                    if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                        taskType = serviceRepository.findById(job.getTypeId())
+                            .map(com.TenX.Automobile.entity.Service::getTitle)
+                            .orElse("Service");
+                    } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                        taskType = projectRepository.findById(job.getTypeId())
+                            .map(Project::getTitle)
+                            .orElse("Project");
                     }
                     
                     ScheduleResponse.ScheduleTask task = ScheduleResponse.ScheduleTask.builder()

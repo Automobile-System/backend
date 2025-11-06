@@ -1,7 +1,6 @@
 package com.TenX.Automobile.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.TenX.Automobile.entity.Service;
+import com.TenX.Automobile.dto.request.ServiceRequest;
+import com.TenX.Automobile.dto.response.ServiceResponse;
 import com.TenX.Automobile.service.ServiceEntityService;
 
 import jakarta.validation.Valid;
@@ -31,45 +31,58 @@ public class ServiceController {
     private final ServiceEntityService serviceEntityService;
 
     @GetMapping
-    public ResponseEntity<List<Service>> getAllServices() {
-        return ResponseEntity.ok(serviceEntityService.findAll());
+    public ResponseEntity<List<ServiceResponse>> getAllServices() {
+        List<ServiceResponse> services = serviceEntityService.findAll();
+        return ResponseEntity.ok(services);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getService(@PathVariable Long id) {
-        Optional<Service> s = serviceEntityService.findById(id);
-        if (s.isPresent()) return ResponseEntity.ok(s.get());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Service not found");
+        try {
+            ServiceResponse service = serviceEntityService.findById(id);
+            return ResponseEntity.ok(service);
+        } catch (RuntimeException e) {
+            log.error("Service not found with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Service not found with id: " + id);
+        }
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') and isAuthenticated()")
-    public ResponseEntity<?> createService(@Valid @RequestBody Service service) {
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    public ResponseEntity<?> createService(@Valid @RequestBody ServiceRequest request) {
         try {
-            Service saved = serviceEntityService.create(service);
-            return new ResponseEntity<>(saved, HttpStatus.CREATED);
+            ServiceResponse created = serviceEntityService.create(request);
+            return new ResponseEntity<>(created, HttpStatus.CREATED);
         } catch (Exception e) {
             log.error("Failed to create service", e);
-            return new ResponseEntity<>("Failed to create service", HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') and isAuthenticated()")
-    public ResponseEntity<?> updateService(@PathVariable Long id, @RequestBody Service service) {
-        Optional<Service> opt = serviceEntityService.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Service not found");
-        Service updated = serviceEntityService.update(id, service);
-        return ResponseEntity.ok(updated);
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    public ResponseEntity<?> updateService(@PathVariable Long id, @Valid @RequestBody ServiceRequest request) {
+        try {
+            ServiceResponse updated = serviceEntityService.update(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            log.error("Failed to update service with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') and isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<?> deleteService(@PathVariable Long id) {
-        Optional<Service> opt = serviceEntityService.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Service not found");
-        serviceEntityService.delete(id);
-        return ResponseEntity.ok("Service deleted");
+        try {
+            serviceEntityService.delete(id);
+            return ResponseEntity.ok("Service deleted successfully");
+        } catch (RuntimeException e) {
+            log.error("Failed to delete service with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        }
     }
-
 }

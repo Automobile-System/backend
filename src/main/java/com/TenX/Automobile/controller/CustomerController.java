@@ -81,7 +81,8 @@ public class CustomerController {
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<?> getProfile(Authentication authentication) {
         try {
-            log.info("Customer: Get profile for user: {}", authentication.getName());
+            log.info("Customer: Get profile for user: {}, authorities: {}", 
+                    authentication.getName(), authentication.getAuthorities());
             
             CustomerProfileResponse profile = customerService.getCustomerProfile(authentication.getName());
             

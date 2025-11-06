@@ -4,6 +4,7 @@ import com.TenX.Automobile.dto.request.ServiceBookingRequest;
 import com.TenX.Automobile.dto.response.AvailableSlotResponse;
 import com.TenX.Automobile.dto.response.ServiceBookingResponse;
 import com.TenX.Automobile.entity.Customer;
+import com.TenX.Automobile.entity.Job;
 import com.TenX.Automobile.entity.Vehicle;
 import com.TenX.Automobile.repository.CustomerRepository;
 import com.TenX.Automobile.repository.JobRepository;
@@ -17,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -147,7 +149,7 @@ public class BookingService {
                     ". Available slots: " + availability.getAvailableCount());
         }
 
-        // Find the service
+        // Find the service template
         com.TenX.Automobile.entity.Service service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found with ID: " + request.getServiceId()));
 
@@ -155,29 +157,30 @@ public class BookingService {
         Vehicle vehicle = vehicleRepository.findByIdAndCustomerId(request.getVehicleId(), customer.getId())
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or doesn't belong to customer: " + request.getVehicleId()));
 
-        // Update service with booking details
-        service.setArrivingDate(request.getArrivingDate());
-        service.setStatus("PENDING");
-        
-        // Add vehicle to the service
-        service.addVehicle(vehicle);
+        // Create a Job entity for this service booking
+        Job job = new Job();
+        job.setServiceType(service);
+        job.setVehicle(vehicle);
+        job.setStatus("PENDING");
+        job.setArrivingDate(request.getArrivingDate());
+        job.setCost(service.getCost() != null ? BigDecimal.valueOf(service.getCost()) : null);
 
-        // Save the service
-        com.TenX.Automobile.entity.Service savedService = serviceRepository.save(service);
+        // Save the job
+        Job savedJob = jobRepository.save(job);
 
-        log.info("Service booked successfully - jobId: {}, serviceId: {}", savedService.getJobId(), savedService.getJobId());
+        log.info("Service booked successfully - jobId: {}, serviceId: {}", savedJob.getJobId(), service.getServiceId());
 
         // Build response
         return ServiceBookingResponse.builder()
-                .jobId(savedService.getJobId())
-                .serviceId(savedService.getJobId())
-                .title(savedService.getTitle())
-                .description(savedService.getDescription())
-                .status(savedService.getStatus())
-                .arrivingDate(savedService.getArrivingDate())
-                .cost(savedService.getCost())
-                .estimatedHours(savedService.getEstimatedHours())
-                .category(savedService.getCategory())
+                .jobId(savedJob.getJobId())
+                .serviceId(service.getServiceId())
+                .title(service.getTitle())
+                .description(service.getDescription())
+                .status(savedJob.getStatus())
+                .arrivingDate(savedJob.getArrivingDate())
+                .cost(savedJob.getCost())
+                .estimatedHours(service.getEstimatedHours())
+                .category(service.getCategory())
                 .vehicleRegistration(vehicle.getRegistration_No())
                 .message("Service booked successfully!")
                 .bookedAt(LocalDateTime.now())

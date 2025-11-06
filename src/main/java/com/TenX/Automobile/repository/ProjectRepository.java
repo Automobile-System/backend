@@ -8,21 +8,22 @@ import org.springframework.stereotype.Repository;
 import com.TenX.Automobile.entity.Project;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
-    @Query("SELECT COUNT(p) FROM Project p JOIN p.vehicles v WHERE v.customer.id = :customerId AND (p.status IS NULL OR p.status != 'COMPLETED')")
-    Long countActiveProjectsByCustomerId(@Param("customerId") UUID customerId);
+    // Find project by ID
+    Optional<Project> findByProjectId(Long projectId);
 
-    @Query("SELECT COUNT(p) FROM Project p JOIN p.vehicles v WHERE v.customer.id = :customerId AND p.status = 'COMPLETED'")
-    Long countCompletedProjectsByCustomerId(@Param("customerId") UUID customerId);
+    // Find projects by title (search)
+    List<Project> findByTitleContainingIgnoreCase(String title);
 
-    @Query("SELECT COUNT(p) FROM Project p JOIN p.vehicles v WHERE v.customer.id = :customerId AND p.arrivingDate > :currentDate")
-    Long countUpcomingProjectsByCustomerId(@Param("customerId") UUID customerId, @Param("currentDate") LocalDateTime currentDate);
+    // Find projects by status
+    List<Project> findByStatus(String status);
 
-    @Query("SELECT p FROM Project p JOIN p.vehicles v WHERE v.customer.id = :customerId AND p.createdAt >= :startDate ORDER BY p.createdAt")
-    java.util.List<Project> findProjectsByCustomerIdAndDateRange(@Param("customerId") UUID customerId, @Param("startDate") LocalDateTime startDate);
-
+    // Find projects created within date range
+    @Query("SELECT p FROM Project p WHERE p.createdAt BETWEEN :startDate AND :endDate ORDER BY p.createdAt DESC")
+    List<Project> findByCreatedAtBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

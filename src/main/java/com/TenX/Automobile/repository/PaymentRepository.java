@@ -7,7 +7,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,10 +20,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("SELECT SUM(p.p_Amount) FROM Payment p WHERE MONTH(p.createdAt) = MONTH(:date) AND YEAR(p.createdAt) = YEAR(:date)")
     Double sumAmountByMonth(@Param("date") LocalDateTime date);
     
-    @Query("SELECT SUM(p.p_Amount) FROM Payment p JOIN p.job j JOIN j.vehicles v WHERE v.customer.id = :customerId")
+    @Query("SELECT SUM(p.p_Amount) FROM Payment p JOIN p.job j JOIN j.vehicle v WHERE v.customer.id = :customerId")
     Double sumAmountByCustomerId(@Param("customerId") UUID customerId);
     
-    @Query("SELECT MAX(p.createdAt) FROM Payment p JOIN p.job j JOIN j.vehicles v WHERE v.customer.id = :customerId")
+    @Query("SELECT MAX(p.createdAt) FROM Payment p JOIN p.job j JOIN j.vehicle v WHERE v.customer.id = :customerId")
     LocalDateTime findLastPaymentDateByCustomerId(@Param("customerId") UUID customerId);
 }
 

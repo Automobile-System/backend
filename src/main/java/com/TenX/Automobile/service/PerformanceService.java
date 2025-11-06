@@ -26,6 +26,8 @@ public class PerformanceService {
     private final ManageAssignJobRepository manageAssignJobRepository;
     private final TaskRepository taskRepository;
     private final TimeLogRepository timeLogRepository;
+    private final ProjectRepository projectRepository;
+    private final ServiceRepository serviceRepository;
     
     // Configuration constants - these could be moved to a config file or database
     private static final double BASE_SALARY = 50000.0; // Default base salary
@@ -270,18 +272,26 @@ public class PerformanceService {
         List<ManageAssignJob> assignments = manageAssignJobRepository.findByEmployee_Id(employeeId);
         
         // Group by job type/service type
-        Map<String, Long> distribution = assignments.stream()
-                .map(maj -> maj.getJob())
-                .filter(job -> job instanceof Project)
-                .map(job -> {
-                    Project project = (Project) job;
-                    // Use project title or specialty as service type
-                    return project.getTitle() != null ? project.getTitle() : "General Service";
-                })
-                .collect(Collectors.groupingBy(
-                    serviceType -> serviceType,
-                    Collectors.counting()
-                ));
+        Map<String, Long> distribution = new java.util.HashMap<>();
+        
+        for (ManageAssignJob assignment : assignments) {
+            Job job = assignment.getJob();
+            String serviceType = "General Service";
+            
+            if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                // Look up project title
+                serviceType = projectRepository.findById(job.getTypeId())
+                    .map(Project::getTitle)
+                    .orElse("General Project");
+            } else if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                // Look up service title
+                serviceType = serviceRepository.findById(job.getTypeId())
+                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .orElse("General Service");
+            }
+            
+            distribution.put(serviceType, distribution.getOrDefault(serviceType, 0L) + 1);
+        }
         
         return distribution.entrySet().stream()
                 .map(entry -> ChartsDataResponse.ServiceDistributionData.builder()

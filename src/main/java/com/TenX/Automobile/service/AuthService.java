@@ -18,7 +18,6 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +38,6 @@ public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final BaseUserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
@@ -89,8 +87,8 @@ public class AuthService {
 
             long expiresIn = jwtTokenProvider.getAccessTokenValidity();
 
-
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(
+            // Create refresh token (stored in database and cookie)
+            refreshTokenService.createRefreshToken(
                     user,
                     request.isRememberMe(),
                     httpRequest

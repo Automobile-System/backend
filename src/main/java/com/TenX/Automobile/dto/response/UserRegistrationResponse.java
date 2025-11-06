@@ -2,7 +2,6 @@ package com.TenX.Automobile.dto.response;
 
 import com.TenX.Automobile.enums.Role;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
