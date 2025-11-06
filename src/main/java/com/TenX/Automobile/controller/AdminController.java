@@ -517,6 +517,92 @@ public class AdminController {
         return ResponseEntity.ok(adminService.updateCompensationRules(request));
     }
 
+    // ==================== PAGE 7: CUSTOMER MANAGEMENT ====================
+
+    /**
+     * Get customer overview statistics
+     * GET /api/admin/customers/overview
+     */
+    @GetMapping("/customers/overview")
+    public ResponseEntity<CustomerOverviewResponse> getCustomerOverview() {
+        log.info("Getting customer overview");
+        return ResponseEntity.ok(adminService.getCustomerOverview());
+    }
+
+    /**
+     * Get list of all customers
+     * GET /api/admin/customers/list
+     */
+    @GetMapping("/customers/list")
+    public ResponseEntity<List<CustomerListResponse>> getCustomerList() {
+        log.info("Getting customer list");
+        return ResponseEntity.ok(adminService.getCustomerList());
+    }
+
+    /**
+     * Get customer by ID
+     * GET /api/admin/customers/{id}
+     */
+    @GetMapping("/customers/{id}")
+    public ResponseEntity<CustomerListResponse> getCustomerById(@PathVariable String id) {
+        log.info("Getting customer by ID: {}", id);
+        return ResponseEntity.ok(adminService.getCustomerById(id));
+    }
+
+    /**
+     * Add new customer
+     * POST /api/admin/customers
+     */
+    @PostMapping("/customers")
+    public ResponseEntity<CustomerListResponse> addCustomer(@Valid @RequestBody AddCustomerRequest request) {
+        log.info("Adding customer: {}", request.getEmail());
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(adminService.addCustomer(request));
+    }
+
+    /**
+     * Update customer status
+     * PUT /api/admin/customers/{id}/status
+     */
+    @PutMapping("/customers/{id}/status")
+    public ResponseEntity<CustomerListResponse> updateCustomerStatus(
+            @PathVariable String id,
+            @RequestBody Map<String, String> statusRequest) {
+        log.info("Updating customer {} status to {}", id, statusRequest.get("status"));
+        return ResponseEntity.ok(adminService.updateCustomerStatus(id, statusRequest.get("status")));
+    }
+
+    /**
+     * Delete customer
+     * DELETE /api/admin/customers/{id}
+     */
+    @DeleteMapping("/customers/{id}")
+    public ResponseEntity<Map<String, Object>> deleteCustomer(@PathVariable String id) {
+        log.info("Deleting customer: {}", id);
+        adminService.deleteCustomer(id);
+        return ResponseEntity.ok(Map.of("message", "Customer deleted successfully"));
+    }
+
+    /**
+     * Activate customer
+     * PUT /api/admin/customers/{id}/activate
+     */
+    @PutMapping("/customers/{id}/activate")
+    public ResponseEntity<CustomerListResponse> activateCustomer(@PathVariable String id) {
+        log.info("Activating customer: {}", id);
+        return ResponseEntity.ok(adminService.activateCustomer(id));
+    }
+
+    /**
+     * Deactivate customer
+     * PUT /api/admin/customers/{id}/deactivate
+     */
+    @PutMapping("/customers/{id}/deactivate")
+    public ResponseEntity<CustomerListResponse> deactivateCustomer(@PathVariable String id) {
+        log.info("Deactivating customer: {}", id);
+        return ResponseEntity.ok(adminService.deactivateCustomer(id));
+    }
+
     // ==================== HELPER METHODS ====================
 
     private String formatTimeAgo(java.time.LocalDateTime dateTime) {

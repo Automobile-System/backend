@@ -1014,6 +1014,164 @@ public class AdminService {
         return response;
     }
 
+    // ==================== PAGE 7: CUSTOMER MANAGEMENT ====================
+
+    public CustomerOverviewResponse getCustomerOverview() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+
+        // Total customers
+        Long totalCustomers = customerRepository.count();
+
+        // New customers this month
+        Long newCustomersThisMonth = customerRepository.findAll().stream()
+            .filter(c -> c.getCreatedAt() != null && c.getCreatedAt().isAfter(startOfMonth))
+            .count();
+
+        // Active customers (enabled)
+        Long activeCustomers = customerRepository.findAll().stream()
+            .filter(Customer::isEnabled)
+            .count();
+
+        // Activity rate
+        Double activityRate = totalCustomers > 0 ? 
+            (activeCustomers.doubleValue() / totalCustomers) * 100 : 0.0;
+
+        // Find top customer by total spent
+        CustomerOverviewResponse.TopCustomer topCustomer = findTopCustomer();
+
+        return CustomerOverviewResponse.builder()
+            .totalCustomers(totalCustomers.intValue())
+            .newThisMonth(newCustomersThisMonth.intValue())
+            .activeCustomers(activeCustomers.intValue())
+            .activityRate(Math.round(activityRate * 10.0) / 10.0)
+            .topCustomer(topCustomer)
+            .build();
+    }
+
+    public List<CustomerListResponse> getCustomerList() {
+        List<Customer> customers = customerRepository.findAll();
+
+        return customers.stream()
+            .map(customer -> {
+                // Count vehicles
+                Integer vehicleCount = customer.getVehicles() != null ? customer.getVehicles().size() : 0;
+
+                // Calculate total spent from payments
+                Double totalSpent = paymentRepository.sumAmountByCustomerId(customer.getId());
+                if (totalSpent == null) totalSpent = 0.0;
+
+                // Get last service date
+                LocalDateTime lastPaymentDate = paymentRepository.findLastPaymentDateByCustomerId(customer.getId());
+                String lastServiceDate = lastPaymentDate != null ? 
+                    lastPaymentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "N/A";
+
+                String name = (customer.getFirstName() != null ? customer.getFirstName() : "") + 
+                             (customer.getLastName() != null ? " " + customer.getLastName() : "").trim();
+                if (name.isEmpty()) name = "N/A";
+
+                String status = customer.isEnabled() ? "Active" : "Inactive";
+
+                return CustomerListResponse.builder()
+                    .id(customer.getCustomerId())
+                    .name(name)
+                    .email(customer.getEmail())
+                    .phone(customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "N/A")
+                    .vehicleCount(vehicleCount)
+                    .totalSpent(totalSpent)
+                    .lastServiceDate(lastServiceDate)
+                    .status(status)
+                    .build();
+            })
+            .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+            .collect(Collectors.toList());
+    }
+
+    public CustomerListResponse addCustomer(AddCustomerRequest request) {
+        // Check if email already exists
+        if (customerRepository.findByEmail(request.getEmail()).isPresent() ||
+            employeeRepository.findByEmail(request.getEmail()).isPresent() ||
+            adminRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("User with email " + request.getEmail() + " already exists");
+        }
+
+        // Split name into first and last name
+        String[] nameParts = request.getName().trim().split("\\s+", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
+        // Generate customer ID
+        String customerId = generateCustomerId();
+
+        // Create customer with default password
+        Customer customer = Customer.builder()
+            .customerId(customerId)
+            .email(request.getEmail())
+            .firstName(firstName)
+            .lastName(lastName)
+            .phoneNumber(request.getPhone())
+            .password(passwordEncoder.encode("TempPassword123!"))
+            .enabled(true)
+            .build();
+
+        customer.addRole(Role.CUSTOMER);
+        Customer savedCustomer = customerRepository.save(customer);
+
+        return CustomerListResponse.builder()
+            .id(savedCustomer.getCustomerId())
+            .name(firstName + (lastName.isEmpty() ? "" : " " + lastName))
+            .email(savedCustomer.getEmail())
+            .phone(savedCustomer.getPhoneNumber())
+            .vehicleCount(0)
+            .totalSpent(0.0)
+            .lastServiceDate("N/A")
+            .status("Active")
+            .build();
+    }
+
+    public CustomerListResponse updateCustomerStatus(String customerId, String status) {
+        Customer customer = customerRepository.findByCustomerId(customerId)
+            .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        boolean enabled = "Active".equalsIgnoreCase(status);
+        customer.setEnabled(enabled);
+        customerRepository.save(customer);
+
+        return mapToCustomerListResponse(customer);
+    }
+
+    public void deleteCustomer(String customerId) {
+        Customer customer = customerRepository.findByCustomerId(customerId)
+            .orElseThrow(() -> new RuntimeException("Customer not found"));
+        customerRepository.delete(customer);
+    }
+
+    public CustomerListResponse activateCustomer(String customerId) {
+        Customer customer = customerRepository.findByCustomerId(customerId)
+            .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        customer.setEnabled(true);
+        customerRepository.save(customer);
+
+        return mapToCustomerListResponse(customer);
+    }
+
+    public CustomerListResponse deactivateCustomer(String customerId) {
+        Customer customer = customerRepository.findByCustomerId(customerId)
+            .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        customer.setEnabled(false);
+        customerRepository.save(customer);
+
+        return mapToCustomerListResponse(customer);
+    }
+
+    public CustomerListResponse getCustomerById(String customerId) {
+        Customer customer = customerRepository.findByCustomerId(customerId)
+            .orElseThrow(() -> new RuntimeException("Customer not found"));
+        return mapToCustomerListResponse(customer);
+    }
+
     // ==================== HELPER METHODS ====================
 
     public UserEntity getUserById(UUID userId) {
@@ -1062,5 +1220,99 @@ public class AdminService {
         } else {
             return String.format("%.1f hours", hours);
         }
+    }
+
+    private CustomerOverviewResponse.TopCustomer findTopCustomer() {
+        List<Customer> customers = customerRepository.findAll();
+        
+        Customer topCustomer = null;
+        Double maxSpent = 0.0;
+        Long maxServices = 0L;
+
+        for (Customer customer : customers) {
+            Double totalSpent = paymentRepository.sumAmountByCustomerId(customer.getId());
+            if (totalSpent == null) totalSpent = 0.0;
+            
+            Long servicesUsed = serviceRepository.countCompletedServicesByCustomerId(customer.getId());
+            if (servicesUsed == null) servicesUsed = 0L;
+
+            if (totalSpent > maxSpent || (totalSpent.equals(maxSpent) && servicesUsed > maxServices)) {
+                maxSpent = totalSpent;
+                maxServices = servicesUsed;
+                topCustomer = customer;
+            }
+        }
+
+        if (topCustomer == null) {
+            return CustomerOverviewResponse.TopCustomer.builder()
+                .name("N/A")
+                .email("N/A")
+                .totalSpent(0.0)
+                .servicesUsed(0)
+                .build();
+        }
+
+        String name = (topCustomer.getFirstName() != null ? topCustomer.getFirstName() : "") + 
+                     (topCustomer.getLastName() != null ? " " + topCustomer.getLastName() : "").trim();
+        if (name.isEmpty()) name = "N/A";
+
+        return CustomerOverviewResponse.TopCustomer.builder()
+            .name(name)
+            .email(topCustomer.getEmail())
+            .totalSpent(maxSpent)
+            .servicesUsed(maxServices.intValue())
+            .build();
+    }
+
+    private String generateCustomerId() {
+        List<String> existingIds = customerRepository.findAllCustomerIds();
+        if (existingIds.isEmpty()) {
+            return "CUST0001";
+        }
+
+        List<Integer> numbers = existingIds.stream()
+            .filter(id -> id.startsWith("CUST"))
+            .map(id -> Integer.parseInt(id.substring(4)))
+            .sorted()
+            .toList();
+
+        int nextId = findNextCustomerNumber(numbers);
+        return String.format("CUST%04d", nextId);
+    }
+
+    private int findNextCustomerNumber(List<Integer> numbers) {
+        for (int i = 0; i < numbers.size(); i++) {
+            if (numbers.get(i) != i + 1) {
+                return i + 1;
+            }
+        }
+        return numbers.size() + 1;
+    }
+
+    private CustomerListResponse mapToCustomerListResponse(Customer customer) {
+        Integer vehicleCount = customer.getVehicles() != null ? customer.getVehicles().size() : 0;
+        Double totalSpent = paymentRepository.sumAmountByCustomerId(customer.getId());
+        if (totalSpent == null) totalSpent = 0.0;
+
+        LocalDateTime lastPaymentDate = paymentRepository.findLastPaymentDateByCustomerId(customer.getId());
+        String lastServiceDate = lastPaymentDate != null ? 
+            lastPaymentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "N/A";
+
+        String name = (customer.getFirstName() != null ? customer.getFirstName() : "") + 
+                     (customer.getLastName() != null ? " " + customer.getLastName() : "").trim();
+        if (name.isEmpty()) name = "N/A";
+
+        String status = customer.isEnabled() ? "Active" : "Inactive";
+
+        return CustomerListResponse.builder()
+            .id(customer.getCustomerId())
+            .name(name)
+            .email(customer.getEmail())
+            .phone(customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "N/A")
+            .vehicleCount(vehicleCount)
+            .totalSpent(totalSpent)
+            .lastServiceDate(lastServiceDate)
+            .status(status)
+            .build();
     }
 }
