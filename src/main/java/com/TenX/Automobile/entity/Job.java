@@ -7,28 +7,26 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.TenX.Automobile.enums.JobType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.CascadeType;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -45,6 +43,13 @@ public class Job {
     @Column(name = "job_id", updatable = false, nullable = false)
     private Long jobId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private JobType type;
+
+    @Column(name = "type_id", nullable = false)
+    private Long typeId;
+
     @Column(name = "status")
     private String status;
 
@@ -54,18 +59,10 @@ public class Job {
     @Column(name = "cost")
     private BigDecimal cost;
 
-    @ManyToMany
-    @JoinTable(
-        name = "job_vehicle",
-        joinColumns = @JoinColumn(name = "job_id"),
-        inverseJoinColumns = @JoinColumn(name = "vehicle_id")
-    )
-    @Builder.Default
-    private List<Vehicle> vehicles = new ArrayList<>();
-
-    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Task> tasks = new ArrayList<>();
+    // Each job belongs to one vehicle
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id", nullable = false)
+    private Vehicle vehicle;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -75,24 +72,26 @@ public class Job {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public void addVehicle(Vehicle vehicle) {
-        this.vehicles.add(vehicle);
-        vehicle.getJobs().add(this);
+    // Helper method to set Service type and ID
+    public void setServiceType(Service service) {
+        this.type = JobType.SERVICE;
+        this.typeId = service.getServiceId();
     }
 
-    public void removeVehicle(Vehicle vehicle) {
-        this.vehicles.remove(vehicle);
-        vehicle.getJobs().remove(this);
+    // Helper method to set Project type and ID
+    public void setProjectType(Project project) {
+        this.type = JobType.PROJECT;
+        this.typeId = project.getProjectId();
     }
 
-    public void addTask(Task task) {
-        this.tasks.add(task);
-        task.setJob(this);
+    // Check if this job is a service job
+    public boolean isServiceJob() {
+        return JobType.SERVICE.equals(this.type);
     }
 
-    public void removeTask(Task task) {
-        this.tasks.remove(task);
-        task.setJob(null);
+    // Check if this job is a project job
+    public boolean isProjectJob() {
+        return JobType.PROJECT.equals(this.type);
     }
 
 }

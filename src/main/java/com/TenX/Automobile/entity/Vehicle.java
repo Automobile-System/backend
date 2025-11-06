@@ -45,7 +45,8 @@ public class Vehicle {
   @JoinColumn(name = "customer_id", nullable = false)
   private Customer customer;
 
-  @ManyToMany(mappedBy = "vehicles")
+  // One vehicle can have multiple jobs (jobs can be SERVICE or PROJECT type)
+  @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL)
   @Builder.Default
   private List<Job> jobs = new ArrayList<>();
 
