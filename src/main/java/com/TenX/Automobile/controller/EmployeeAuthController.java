@@ -9,29 +9,25 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
+/**
+ * Backward compatibility controller for old /api/employee/auth endpoints
+ * This ensures existing code that uses /api/employee/auth/signup continues to work
+ */
 @RestController
 @RequestMapping("/api/employee/auth")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
-public class EmployeeController {
+public class EmployeeAuthController {
 
     private final EmployeeService employeeService;
 
-
     @PostMapping("/signup")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') AND isAuthenticated()")
     public ResponseEntity<?> addEmployee(@Valid @RequestBody EmployeeRegistrationRequest employeeRegistrationRequest) {
         try{
-            log.info("Employee Registration Request:{}", employeeRegistrationRequest.getEmail());
-
+            log.info("Employee Registration Request (legacy endpoint):{}", employeeRegistrationRequest.getEmail());
 
             Employee employee = employeeService.addEmployee(employeeRegistrationRequest);
             EmployeeRegistrationResponse employeeRegistrationResponse = EmployeeRegistrationResponse.builder()
@@ -56,23 +52,9 @@ public class EmployeeController {
             return new ResponseEntity<>(e.getMessage(),HttpStatus.BAD_REQUEST);
         }
         catch (Exception e){
-            log.error("Unexpected error during customer registration: {}", employeeRegistrationRequest.getEmail(), e);
+            log.error("Unexpected error during employee registration: {}", employeeRegistrationRequest.getEmail(), e);
             return new ResponseEntity<>(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
-    @GetMapping("/staff/profile")
-//    @PreAuthorize("isAuthenticated()")
-    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<Map<String, Object>> getProfile(Authentication authentication) {
-        log.info("Employee: Get profile for user: {}", authentication.getName());
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Employee: Viewing own profile");
-        response.put("user", authentication.getName());
-        response.put("authorities", authentication.getAuthorities());
-
-        return ResponseEntity.ok(response);
-    }
-
 }
+

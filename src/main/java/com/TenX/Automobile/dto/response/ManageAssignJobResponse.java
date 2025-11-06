@@ -12,14 +12,14 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VehicleResponse {
-    private UUID vehicleId;
-    private String registrationNo;
-    private String brandName;
-    private String model;
-    private int capacity;
-    private String createdBy;
-    private UUID customerId;
-    private String customerEmail;
+public class ManageAssignJobResponse {
+    private UUID assignmentId;
+    private Long jobId;
+    private UUID managerId;
+    private String managerName;
+    private String managerEmail;
+    private UUID employeeId;
+    private String employeeName;
+    private String employeeEmail;
     private LocalDateTime createdAt;
 }
