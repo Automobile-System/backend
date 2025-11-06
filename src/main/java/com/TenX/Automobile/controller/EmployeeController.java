@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/employee/auth")
+@RequestMapping("/api/employee")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

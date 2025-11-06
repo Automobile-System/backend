@@ -28,7 +28,7 @@ public class Vehicle {
 
 
   @Column(name="brand_name")
-  private String brand_name;
+  private String brandName;
 
   @Column(name="model")
   private String model;

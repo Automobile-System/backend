@@ -149,7 +149,7 @@ public class ManagerDashboardService {
             String vehicle = "N/A";
             if (!job.getVehicles().isEmpty()) {
                 Vehicle v = job.getVehicles().get(0);
-                vehicle = v.getBrand_name() + " " + v.getModel();
+                vehicle = v.getBrandName() + " " + v.getModel();
             }
             
             String serviceType = "Service";
@@ -207,7 +207,7 @@ public class ManagerDashboardService {
                 String[] modelParts = request.getVehicleModel().split(" ");
                 Vehicle newVehicle = Vehicle.builder()
                     .registration_No(request.getVehicleRegistration())
-                    .brand_name(modelParts.length > 0 ? modelParts[0] : "Unknown")
+                    .brandName(modelParts.length > 0 ? modelParts[0] : "Unknown")
                     .model(request.getVehicleModel())
                     .customer(customer)
                     .build();
@@ -277,7 +277,7 @@ public class ManagerDashboardService {
                 String[] modelParts = request.getVehicleModel().split(" ");
                 Vehicle newVehicle = Vehicle.builder()
                     .registration_No(request.getVehicleRegistration())
-                    .brand_name(modelParts.length > 0 ? modelParts[0] : "Unknown")
+                    .brandName(modelParts.length > 0 ? modelParts[0] : "Unknown")
                     .model(request.getVehicleModel())
                     .customer(customer)
                     .build();

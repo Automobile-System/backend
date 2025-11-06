@@ -435,7 +435,7 @@ public class CustomerService {
                 .cost(service.getCost())
                 .estimatedHours(service.getEstimatedHours())
                 .vehicleRegistration(vehicle != null ? vehicle.getRegistration_No() : null)
-                .vehicleBrand(vehicle != null ? vehicle.getBrand_name() : null)
+                .vehicleBrand(vehicle != null ? vehicle.getBrandName() : null)
                 .vehicleModel(vehicle != null ? vehicle.getModel() : null)
                 .bookedAt(service.getCreatedAt())
                 .build();
@@ -448,7 +448,7 @@ public class CustomerService {
         if (vehicle != null) {
             vehicleInfo = ServiceDetailResponse.VehicleInfo.builder()
                     .registrationNo(vehicle.getRegistration_No())
-                    .brandName(vehicle.getBrand_name())
+                    .brandName(vehicle.getBrandName())
                     .model(vehicle.getModel())
                     .capacity(vehicle.getCapacity())
                     .build();
