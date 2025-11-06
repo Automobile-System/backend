@@ -25,6 +25,7 @@ import java.util.UUID;
 @RequestMapping("/api/timelogs")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = "*")
 public class TimeLogsController {
 
     private final TimeLogService timeLogService;

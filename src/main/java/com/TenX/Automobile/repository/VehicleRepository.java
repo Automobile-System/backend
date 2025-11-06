@@ -1,5 +1,6 @@
 package com.TenX.Automobile.repository;
 
+import com.TenX.Automobile.entity.Customer;
 import com.TenX.Automobile.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,9 +22,11 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
 
     @Query("SELECT CASE WHEN COUNT(v) > 0 THEN true ELSE false END FROM Vehicle v WHERE v.registration_No = :registrationNo")
     boolean existsByRegistrationNo(@Param("registrationNo") String registrationNo);
-    Optional<Vehicle> findByRegistration_No(String registrationNo);
-    boolean existsByRegistration_No(String registrationNo);
+    
+    @Query("SELECT v FROM Vehicle v WHERE v.registration_No = :registrationNo")
+    Optional<Vehicle> findByRegistration_No(@Param("registrationNo") String registrationNo);
     List<Vehicle> findByCustomer_Id(UUID customerId);
+    List<Vehicle> findByCustomer(Customer customer);
     List<Vehicle> findByBrand_name(String brandName);
     List<Vehicle> findByModel(String model);
     List<Vehicle> findByCapacityGreaterThanEqual(int capacity);

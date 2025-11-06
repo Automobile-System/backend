@@ -16,6 +16,7 @@ import com.TenX.Automobile.dto.response.DashboardSummaryResponse;
 import com.TenX.Automobile.entity.Project;
 import com.TenX.Automobile.entity.Task;
 import com.TenX.Automobile.entity.TimeLog;
+import com.TenX.Automobile.entity.Vehicle;
 import com.TenX.Automobile.repository.ProjectRepository;
 import com.TenX.Automobile.repository.TaskRepository;
 import com.TenX.Automobile.repository.TimeLogRepository;
@@ -346,14 +347,15 @@ public class TaskService {
         String vehicleRegNo = null;
         String customerName = null;
         
-        if (project.getVehicle() != null) {
-            vehicleId = project.getVehicle().getV_Id();
-            vehicleRegNo = project.getVehicle().getRegistration_No();
+        if (project.getVehicles() != null && !project.getVehicles().isEmpty()) {
+            Vehicle vehicle = project.getVehicles().get(0);
+            vehicleId = vehicle.getV_Id();
+            vehicleRegNo = vehicle.getRegistration_No();
             
-            if (project.getVehicle().getCustomer() != null) {
-                customerName = project.getVehicle().getCustomer().getFirstName() + " " + 
-                              (project.getVehicle().getCustomer().getLastName() != null ? 
-                               project.getVehicle().getCustomer().getLastName() : "");
+            if (vehicle.getCustomer() != null) {
+                customerName = vehicle.getCustomer().getFirstName() + " " + 
+                              (vehicle.getCustomer().getLastName() != null ? 
+                               vehicle.getCustomer().getLastName() : "");
             }
         }
 
@@ -389,8 +391,8 @@ public class TaskService {
         }
 
         String vehicleRegNo = null;
-        if (project.getVehicle() != null) {
-            vehicleRegNo = project.getVehicle().getRegistration_No();
+        if (project.getVehicles() != null && !project.getVehicles().isEmpty()) {
+            vehicleRegNo = project.getVehicles().get(0).getRegistration_No();
         }
 
         // Use arrivingDate as startTime, estimate endTime based on estimated hours

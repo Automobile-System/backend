@@ -23,6 +23,7 @@ import java.util.UUID;
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin
 public class ChatController {
 
     private final ChatService chatService;

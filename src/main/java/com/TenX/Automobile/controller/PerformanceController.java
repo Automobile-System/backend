@@ -20,6 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api/performance")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = "*")
 public class PerformanceController {
 
     private final PerformanceService performanceService;

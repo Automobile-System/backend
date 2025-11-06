@@ -3,6 +3,7 @@ package com.TenX.Automobile.service;
 import com.TenX.Automobile.dto.request.EmployeeRegistrationRequest;
 import com.TenX.Automobile.dto.request.UpdateEmployeeProfileRequest;
 import com.TenX.Automobile.dto.response.EmployeeProfileResponse;
+import com.TenX.Automobile.dto.response.EmployeeResponse;
 import com.TenX.Automobile.entity.Employee;
 import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.EmployeeRepository;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -157,5 +159,55 @@ public class EmployeeService {
             }
         }
         return numbers.size() +1;
+    }
+
+    /**
+     * Get all employees with optional filters
+     * @param specialty Optional filter by specialty
+     * @param date Optional filter by joined date
+     * @return List of employees matching the filters
+     */
+    public List<EmployeeResponse> getEmployees(String specialty, LocalDateTime date) {
+        log.info("Fetching employees with specialty: {}, date: {}", specialty, date);
+        List<Employee> employees = employeeRepository.findEmployeesByFilters(specialty, date);
+        return employees.stream()
+                .map(this::convertToEmployeeResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all employees with date range filters
+     * @param specialty Optional filter by specialty
+     * @param startDate Optional start date filter
+     * @param endDate Optional end date filter
+     * @return List of employees matching the filters
+     */
+    public List<EmployeeResponse> getEmployeesByDateRange(String specialty, LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Fetching employees with specialty: {}, startDate: {}, endDate: {}", specialty, startDate, endDate);
+        List<Employee> employees = employeeRepository.findEmployeesByDateRange(specialty, startDate, endDate);
+        return employees.stream()
+                .map(this::convertToEmployeeResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert Employee entity to EmployeeResponse DTO
+     */
+    private EmployeeResponse convertToEmployeeResponse(Employee employee) {
+        return EmployeeResponse.builder()
+                .id(employee.getId())
+                .employeeId(employee.getEmployeeId())
+                .email(employee.getEmail())
+                .firstName(employee.getFirstName())
+                .lastName(employee.getLastName())
+                .nationalId(employee.getNationalId())
+                .phoneNumber(employee.getPhoneNumber())
+                .profileImageUrl(employee.getProfileImageUrl())
+                .specialty(employee.getSpecialty())
+                .roles(employee.getRoles())
+                .joinedDate(employee.getCreatedAt())
+                .lastLoginAt(employee.getLastLoginAt())
+                .enabled(employee.isEnabled())
+                .build();
     }
 }

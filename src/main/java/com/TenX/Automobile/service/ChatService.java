@@ -83,8 +83,8 @@ public class ChatService {
         
         Message savedMessage = messageRepository.save(message);
         
-        // Update conversation's updatedAt timestamp
-        conversation.getUpdatedAt(); // Trigger update via @LastModifiedDate
+        // Update conversation's updatedAt timestamp by saving it
+        conversationRepository.save(conversation); // This triggers @LastModifiedDate
         
         log.info("Message sent successfully with ID: {}", savedMessage.getMessageId());
         

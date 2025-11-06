@@ -37,8 +37,8 @@ public interface ManageAssignJobRepository extends JpaRepository<ManageAssignJob
      */
     @Query("SELECT COUNT(maj) FROM ManageAssignJob maj " +
            "WHERE maj.employee.id = :employeeId " +
-           "AND YEAR(maj.created_at) = YEAR(CURRENT_DATE) " +
-           "AND MONTH(maj.created_at) = MONTH(CURRENT_DATE)")
+           "AND YEAR(maj.createdAt) = YEAR(CURRENT_DATE) " +
+           "AND MONTH(maj.createdAt) = MONTH(CURRENT_DATE)")
     Long countJobsAssignedThisMonth(@Param("employeeId") UUID employeeId);
 
     @Query("SELECT m FROM ManageAssignJob m WHERE m.job.arrivingDate >= :startDate AND m.job.arrivingDate <= :endDate")

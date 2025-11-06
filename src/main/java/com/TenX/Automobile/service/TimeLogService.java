@@ -4,11 +4,13 @@ import com.TenX.Automobile.dto.request.ManualTimeLogRequest;
 import com.TenX.Automobile.dto.response.TimeLogResponse;
 import com.TenX.Automobile.dto.response.WeeklyTotalHoursResponse;
 import com.TenX.Automobile.entity.Job;
+import com.TenX.Automobile.entity.ManageAssignJob;
 import com.TenX.Automobile.entity.Project;
 import com.TenX.Automobile.entity.Task;
 import com.TenX.Automobile.entity.TimeLog;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
 import com.TenX.Automobile.repository.JobRepository;
+import com.TenX.Automobile.repository.ManageAssignJobRepository;
 import com.TenX.Automobile.repository.TaskRepository;
 import com.TenX.Automobile.repository.TimeLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class TimeLogService {
     private final TimeLogRepository timeLogRepository;
     private final JobRepository jobRepository;
     private final TaskRepository taskRepository;
+    private final ManageAssignJobRepository manageAssignJobRepository;
 
     /**
      * Create a new time log for a job
@@ -48,6 +51,17 @@ public class TimeLogService {
         timeLogRepository.findByJob_JobId(jobId).ifPresent(existing -> {
             throw new IllegalStateException("Time log already exists for job ID: " + jobId);
         });
+
+        // Ensure employee is set - get from ManageAssignJob if not provided
+        if (timeLog.getEmployee() == null) {
+            List<ManageAssignJob> assignments = manageAssignJobRepository.findByJobJobId(jobId);
+            if (assignments.isEmpty()) {
+                throw new IllegalStateException("No employee assigned to this job. Cannot create time log.");
+            }
+            // Use the first assigned employee (typically there's one employee per job)
+            timeLog.setEmployee(assignments.get(0).getEmployee());
+            log.info("Employee not provided in request, using assigned employee from job: {}", assignments.get(0).getEmployee().getId());
+        }
 
         timeLog.setJob(job);
         timeLog.calculateHoursWorked();
@@ -113,13 +127,23 @@ public class TimeLogService {
             throw new IllegalStateException("Time tracking is already active for this job");
         }
 
+        // Get employee from ManageAssignJob
+        List<ManageAssignJob> assignments = manageAssignJobRepository.findByJobJobId(jobId);
+        if (assignments.isEmpty()) {
+            throw new IllegalStateException("No employee assigned to this job. Cannot start time tracking.");
+        }
+        
+        // Use the first assigned employee (typically there's one employee per job)
+        ManageAssignJob assignment = assignments.get(0);
+
         TimeLog timeLog = new TimeLog();
         timeLog.setJob(job);
+        timeLog.setEmployee(assignment.getEmployee());
         timeLog.setStartTime(LocalDateTime.now());
         timeLog.setDescription("Time tracking started");
 
         TimeLog savedTimeLog = timeLogRepository.save(timeLog);
-        log.info("Time tracking started for job ID: {}", jobId);
+        log.info("Time tracking started for job ID: {} assigned to employee: {}", jobId, assignment.getEmployee().getId());
         return savedTimeLog;
     }
 
@@ -245,14 +269,23 @@ public class TimeLogService {
             timeLog.calculateHoursWorked();
             log.info("Updating existing time log for job ID: {}", jobId);
         } else {
-            // Create new log
+            // Create new log - get employee from ManageAssignJob
+            List<ManageAssignJob> assignments = manageAssignJobRepository.findByJobJobId(jobId);
+            if (assignments.isEmpty()) {
+                throw new IllegalStateException("No employee assigned to this job. Cannot create time log.");
+            }
+            
+            // Use the first assigned employee (typically there's one employee per job)
+            ManageAssignJob assignment = assignments.get(0);
+            
             timeLog = new TimeLog();
             timeLog.setJob(project);
+            timeLog.setEmployee(assignment.getEmployee());
             timeLog.setStartTime(request.getStartTime());
             timeLog.setEndTime(request.getEndTime());
             timeLog.setDescription(request.getRemarks() != null ? request.getRemarks() : "Manual time entry");
             timeLog.calculateHoursWorked();
-            log.info("Creating new time log for job ID: {}", jobId);
+            log.info("Creating new time log for job ID: {} assigned to employee: {}", jobId, assignment.getEmployee().getId());
         }
         
         TimeLog savedTimeLog = timeLogRepository.save(timeLog);
@@ -310,8 +343,8 @@ public class TimeLogService {
                 }
                 
                 // Get vehicle registration number
-                if (project.getVehicle() != null) {
-                    vehicleRegNo = project.getVehicle().getRegistration_No();
+                if (project.getVehicles() != null && !project.getVehicles().isEmpty()) {
+                    vehicleRegNo = project.getVehicles().get(0).getRegistration_No();
                 }
             }
         }

@@ -30,10 +30,6 @@ public class Payment {
   @Column(name="payment_type")
   private String p_Type;
 
-  @CreatedDate
-  @Column(name="created_at",nullable=false,updatable = false)
-  private LocalDateTime p_Created_at;
-
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "job_id", unique = true)
   private Job job;
