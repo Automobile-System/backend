@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -152,8 +153,11 @@ public class PerformanceService {
      * Calculate total hours worked in a month
      */
     private Double calculateTotalHoursForMonth(UUID employeeId, LocalDate startDate, LocalDate endDate) {
+        // Convert LocalDate to LocalDateTime to match updated repository method signature
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59, 999999999);
         List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-            employeeId, startDate, endDate);
+            employeeId, startDateTime, endDateTime);
         
         return timeLogs.stream()
                 .filter(tl -> tl.getHoursWorked() != null)
@@ -196,8 +200,11 @@ public class PerformanceService {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1);
         
+        // Convert LocalDate to LocalDateTime to match updated repository method signature
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59, 999999999);
         List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-            employeeId, startDate, endDate);
+            employeeId, startDateTime, endDateTime);
         
         // Group by date
         Map<LocalDate, Double> hoursByDate = timeLogs.stream()

@@ -205,6 +205,7 @@ public class TimeLogService {
 
     /**
      * Get time logs for an employee with optional date range filter
+     * Handles date conversion in service layer to avoid PostgreSQL parameter type issues
      */
     @Transactional(readOnly = true)
     public List<TimeLogResponse> getTimeLogsByEmployeeId(UUID employeeId, String dateRange) {
@@ -232,8 +233,20 @@ public class TimeLogService {
             }
         }
         
-        List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-            employeeId, startDate, endDate);
+        List<TimeLog> timeLogs;
+        
+        // Convert LocalDate to LocalDateTime and call appropriate repository method
+        // This avoids PostgreSQL parameter type inference issues with CAST and NULL parameters
+        if (startDate != null && endDate != null) {
+            // Convert dates to start and end of day for proper range filtering
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(23, 59, 59, 999999999); // End of day with nanoseconds
+            timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
+                employeeId, startDateTime, endDateTime);
+        } else {
+            // No date filter - get all time logs for the employee
+            timeLogs = timeLogRepository.findTimeLogsByEmployeeId(employeeId);
+        }
         
         return timeLogs.stream()
                 .map(this::convertToTimeLogResponse)
@@ -310,8 +323,11 @@ public class TimeLogService {
             LocalDate startOfWeek = now.with(WeekFields.of(Locale.getDefault()).dayOfWeek(), 1);
             LocalDate endOfWeek = startOfWeek.plusDays(6);
             
+            // Convert LocalDate to LocalDateTime to match updated repository method signature
+            LocalDateTime startDateTime = startOfWeek.atStartOfDay();
+            LocalDateTime endDateTime = endOfWeek.atTime(23, 59, 59, 999999999);
             List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-                employeeId, startOfWeek, endOfWeek);
+                employeeId, startDateTime, endDateTime);
             
             totalHours = timeLogs.stream()
                     .filter(tl -> tl.getHoursWorked() != null)

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,19 +20,30 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
 
     /**
      * Find all time logs for an employee via ManageAssignJob
-     * Filters by date range if provided
+     * No date range filter - returns all time logs
      */
     @Query("SELECT DISTINCT tl FROM TimeLog tl " +
            "JOIN tl.job j " +
            "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
-           "AND (:startDate IS NULL OR CAST(tl.startTime AS date) >= :startDate) " +
-           "AND (:endDate IS NULL OR CAST(tl.startTime AS date) <= :endDate) " +
+           "ORDER BY tl.startTime DESC")
+    List<TimeLog> findTimeLogsByEmployeeId(@Param("employeeId") UUID employeeId);
+
+    /**
+     * Find all time logs for an employee via ManageAssignJob
+     * Filters by date range using LocalDateTime to avoid PostgreSQL parameter type issues
+     */
+    @Query("SELECT DISTINCT tl FROM TimeLog tl " +
+           "JOIN tl.job j " +
+           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
+           "WHERE maj.employee.id = :employeeId " +
+           "AND tl.startTime >= :startDateTime " +
+           "AND tl.startTime <= :endDateTime " +
            "ORDER BY tl.startTime DESC")
     List<TimeLog> findTimeLogsByEmployeeIdAndDateRange(
         @Param("employeeId") UUID employeeId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
+        @Param("startDateTime") LocalDateTime startDateTime,
+        @Param("endDateTime") LocalDateTime endDateTime
     );
 
     /**
