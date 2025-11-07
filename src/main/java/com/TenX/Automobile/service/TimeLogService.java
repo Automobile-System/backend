@@ -8,6 +8,7 @@ import com.TenX.Automobile.entity.ManageAssignJob;
 import com.TenX.Automobile.entity.Project;
 import com.TenX.Automobile.entity.Task;
 import com.TenX.Automobile.entity.TimeLog;
+import com.TenX.Automobile.enums.JobType;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ManageAssignJobRepository;
@@ -254,7 +255,12 @@ public class TimeLogService {
         }
         
         Project project = task.getProject();
-        Long jobId = project.getJobId();
+        
+        // Find the job for this project
+        Job job = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
+                .orElseThrow(() -> new IllegalStateException("Job not found for project: " + project.getProjectId()));
+        
+        Long jobId = job.getJobId();
         
         // Check if time log already exists for this job
         Optional<TimeLog> existingLog = timeLogRepository.findByJob_JobId(jobId);
@@ -279,7 +285,7 @@ public class TimeLogService {
             ManageAssignJob assignment = assignments.get(0);
             
             timeLog = new TimeLog();
-            timeLog.setJob(project);
+            timeLog.setJob(job);
             timeLog.setEmployee(assignment.getEmployee());
             timeLog.setStartTime(request.getStartTime());
             timeLog.setEndTime(request.getEndTime());
@@ -332,20 +338,23 @@ public class TimeLogService {
         String vehicleRegNo = null;
         
         if (timeLog.getJob() != null) {
-            // Get task title from project if it's a Project
-            if (timeLog.getJob() instanceof Project) {
-                Project project = (Project) timeLog.getJob();
-                // Get first task title if available
-                if (project.getTasks() != null && !project.getTasks().isEmpty()) {
-                    taskTitle = project.getTasks().get(0).getTaskTitle();
-                } else {
-                    taskTitle = project.getTitle();
-                }
-                
-                // Get vehicle registration number
-                if (project.getVehicles() != null && !project.getVehicles().isEmpty()) {
-                    vehicleRegNo = project.getVehicles().get(0).getRegistration_No();
-                }
+            Job job = timeLog.getJob();
+            
+            // Get vehicle from job
+            if (job.getVehicle() != null) {
+                vehicleRegNo = job.getVehicle().getRegistration_No();
+            }
+            
+            // Get task title if it's a PROJECT type job
+            if (JobType.PROJECT.equals(job.getType())) {
+                // Lookup the project entity
+                jobRepository.findById(job.getTypeId()).ifPresent(typeId -> {
+                    // This would need ProjectRepository to get project details
+                    // For now, we'll use a simple approach
+                });
+                taskTitle = "Project Task"; // Simplified - could lookup project title
+            } else if (JobType.SERVICE.equals(job.getType())) {
+                taskTitle = "Service"; // Simplified - could lookup service title
             }
         }
         

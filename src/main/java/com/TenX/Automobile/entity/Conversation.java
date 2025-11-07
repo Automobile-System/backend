@@ -31,7 +31,7 @@ public class Conversation {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "participant_id", nullable = false)
     private UserEntity participant; // Can be Customer or Manager
     

@@ -107,9 +107,13 @@ public class AuthController {
      */
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserInfoResponse> getCurrentUser() {
-        log.debug("Get current user request received");
+    public ResponseEntity<?> getCurrentUser(org.springframework.security.core.Authentication authentication) {
+        log.info("Get current user request - Authentication: {}, Authorities: {}", 
+                authentication != null ? authentication.getName() : "null",
+                authentication != null ? authentication.getAuthorities() : "null");
+        
         UserInfoResponse response = authService.getCurrentUser();
+        log.info("User info response - Roles: {}", response.getRoles());
         return ResponseEntity.ok(response);
     }
 

@@ -62,7 +62,7 @@ public class VehicleService {
 
         Vehicle vehicle = Vehicle.builder()
                 .registration_No(request.getRegistrationNo().trim().toUpperCase())
-                .brand_name(request.getBrandName().trim())
+                .brandName(request.getBrandName().trim())
                 .model(request.getModel().trim())
                 .capacity(request.getCapacity())
                 .customer(customer)
@@ -97,7 +97,7 @@ public class VehicleService {
 
         // Update fields
         vehicle.setRegistration_No(request.getRegistrationNo().trim().toUpperCase());
-        vehicle.setBrand_name(request.getBrandName().trim());
+        vehicle.setBrandName(request.getBrandName().trim());
         vehicle.setModel(request.getModel().trim());
         vehicle.setCapacity(request.getCapacity());
 
@@ -151,7 +151,7 @@ public class VehicleService {
         return VehicleResponse.builder()
                 .vehicleId(vehicle.getV_Id())
                 .registrationNo(vehicle.getRegistration_No())
-                .brandName(vehicle.getBrand_name())
+                .brandName(vehicle.getBrandName())
                 .model(vehicle.getModel())
                 .capacity(vehicle.getCapacity())
                 .createdBy(vehicle.getCreatedBy())
@@ -240,7 +240,7 @@ public class VehicleService {
         // Create vehicle
         Vehicle vehicle = Vehicle.builder()
                 .registration_No(request.getRegistrationNo())
-                .brand_name(request.getBrandName())
+                .brandName(request.getBrandName())
                 .model(request.getModel())
                 .capacity(request.getCapacity())
                 .customer(customer)
@@ -277,7 +277,7 @@ public class VehicleService {
         
         // Update vehicle fields
         vehicle.setRegistration_No(request.getRegistrationNo());
-        vehicle.setBrand_name(request.getBrandName());
+        vehicle.setBrandName(request.getBrandName());
         vehicle.setModel(request.getModel());
         vehicle.setCapacity(request.getCapacity());
         

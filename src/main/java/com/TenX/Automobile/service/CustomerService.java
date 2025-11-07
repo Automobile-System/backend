@@ -8,12 +8,13 @@ import com.TenX.Automobile.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.dto.response.ServiceListResponse;
 import com.TenX.Automobile.entity.Customer;
-import com.TenX.Automobile.entity.Project;
+import com.TenX.Automobile.entity.Job;
 import com.TenX.Automobile.entity.TimeLog;
 import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.enums.JobType;
 import com.TenX.Automobile.enums.Role;
 import com.TenX.Automobile.repository.CustomerRepository;
-import com.TenX.Automobile.repository.ProjectRepository;
+import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
 import com.TenX.Automobile.repository.TimeLogRepository;
 import jakarta.transaction.Transactional;
@@ -36,8 +37,8 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final ServiceRepository serviceRepository;
-    private final ProjectRepository projectRepository;
     private final TimeLogRepository timeLogRepository;
+    private final JobRepository jobRepository;
 
     public Customer registerCustomer(CustomerRegistrationRequest customerRegistrationRequest){
         log.info("Customer Registration Request: {}", customerRegistrationRequest.getEmail());
@@ -254,21 +255,39 @@ public class CustomerService {
         LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
         LocalDateTime endOfToday = startOfToday.plusDays(1).minusSeconds(1);
         
-        // Count active services (not completed)
-        Long activeServices = serviceRepository.countActiveServicesByCustomerId(customer.getId());
+        // Count active services (SERVICE type jobs not completed)
+        Long activeServices = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                        (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
+                .count();
         
         // Count completed services
-        Long completedServices = serviceRepository.countCompletedServicesByCustomerId(customer.getId());
+        Long completedServices = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                        "COMPLETED".equals(j.getStatus()))
+                .count();
         
-        // Count active projects (not completed)
-        Long activeProjects = projectRepository.countActiveProjectsByCustomerId(customer.getId());
+        // Count active projects (PROJECT type jobs not completed)
+        Long activeProjects = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                        (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
+                .count();
         
         // Count completed projects
-        Long completedProjects = projectRepository.countCompletedProjectsByCustomerId(customer.getId());
+        Long completedProjects = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                        "COMPLETED".equals(j.getStatus()))
+                .count();
         
         // Count upcoming appointments (arriving date > end of today)
-        Long upcomingServiceAppointments = serviceRepository.countUpcomingServicesByCustomerId(customer.getId(), endOfToday);
-        Long upcomingProjectAppointments = projectRepository.countUpcomingProjectsByCustomerId(customer.getId(), endOfToday);
+        Long upcomingServiceAppointments = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                        j.getArrivingDate() != null && j.getArrivingDate().isAfter(endOfToday))
+                .count();
+        Long upcomingProjectAppointments = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                        j.getArrivingDate() != null && j.getArrivingDate().isAfter(endOfToday))
+                .count();
         Long upcomingAppointments = upcomingServiceAppointments + upcomingProjectAppointments;
         
         log.info("Dashboard overview fetched successfully for customer: {}", email);
@@ -311,9 +330,10 @@ public class CustomerService {
                 break;
         }
         
-        // Fetch services and projects
-        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findServicesByCustomerIdAndDateRange(customer.getId(), startDate);
-        List<Project> projects = projectRepository.findProjectsByCustomerIdAndDateRange(customer.getId(), startDate);
+        // Fetch jobs (services and projects) for this customer since startDate
+        List<Job> customerJobs = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> j.getCreatedAt() != null && j.getCreatedAt().isAfter(startDate))
+                .collect(Collectors.toList());
         
         // Group by month and count
         Map<String, Long> monthlyCount = new LinkedHashMap<>();
@@ -321,18 +341,10 @@ public class CustomerService {
         // Initialize months based on period
         initializeMonths(monthlyCount, startDate, now, period);
         
-        // Count services by month
-        for (com.TenX.Automobile.entity.Service service : services) {
-            if (service.getCreatedAt() != null) {
-                String monthKey = getMonthKey(service.getCreatedAt());
-                monthlyCount.put(monthKey, monthlyCount.getOrDefault(monthKey, 0L) + 1);
-            }
-        }
-        
-        // Count projects by month
-        for (Project project : projects) {
-            if (project.getCreatedAt() != null) {
-                String monthKey = getMonthKey(project.getCreatedAt());
+        // Count jobs by month
+        for (Job job : customerJobs) {
+            if (job.getCreatedAt() != null) {
+                String monthKey = getMonthKey(job.getCreatedAt());
                 monthlyCount.put(monthKey, monthlyCount.getOrDefault(monthKey, 0L) + 1);
             }
         }
@@ -379,23 +391,34 @@ public class CustomerService {
         Customer customer = customerRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
 
-        List<com.TenX.Automobile.entity.Service> services;
+        // Get all jobs for this customer that are SERVICE type
+        List<Job> jobs = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(job -> JobType.SERVICE.equals(job.getType()))
+                .collect(Collectors.toList());
 
-        if (status == null || status.isEmpty()) {
-            services = serviceRepository.findAllByCustomerId(customer.getId());
-        } else if ("active".equalsIgnoreCase(status)) {
-            services = serviceRepository.findActiveServicesByCustomerId(customer.getId());
-        } else if ("completed".equalsIgnoreCase(status)) {
-            services = serviceRepository.findCompletedServicesByCustomerId(customer.getId());
-        } else if ("upcoming".equalsIgnoreCase(status)) {
-            services = serviceRepository.findUpcomingServicesByCustomerId(customer.getId(), LocalDateTime.now());
-        } else {
-            throw new IllegalArgumentException("Invalid status filter. Use: active, completed, or upcoming");
+        // Apply status filter
+        if (status != null && !status.isEmpty()) {
+            if ("active".equalsIgnoreCase(status)) {
+                jobs = jobs.stream()
+                        .filter(job -> "IN_PROGRESS".equals(job.getStatus()) || "PENDING".equals(job.getStatus()))
+                        .collect(Collectors.toList());
+            } else if ("completed".equalsIgnoreCase(status)) {
+                jobs = jobs.stream()
+                        .filter(job -> "COMPLETED".equals(job.getStatus()))
+                        .collect(Collectors.toList());
+            } else if ("upcoming".equalsIgnoreCase(status)) {
+                LocalDateTime now = LocalDateTime.now();
+                jobs = jobs.stream()
+                        .filter(job -> job.getArrivingDate() != null && job.getArrivingDate().isAfter(now))
+                        .collect(Collectors.toList());
+            } else {
+                throw new IllegalArgumentException("Invalid status filter. Use: active, completed, or upcoming");
+            }
         }
 
-        log.info("Found {} services for customer", services.size());
+        log.info("Found {} service jobs for customer", jobs.size());
 
-        return services.stream()
+        return jobs.stream()
                 .map(this::mapToServiceListResponse)
                 .collect(Collectors.toList());
     }
@@ -409,63 +432,66 @@ public class CustomerService {
         Customer customer = customerRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
 
-        com.TenX.Automobile.entity.Service service = serviceRepository.findByIdAndCustomerId(serviceId, customer.getId())
-                .orElseThrow(() -> new RuntimeException("Service not found or doesn't belong to customer"));
+        // Find the service entity
+        com.TenX.Automobile.entity.Service service = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new RuntimeException("Service not found"));
+
+        // Find the job for this service and customer
+        Job job = jobRepository.findByTypeAndTypeId(JobType.SERVICE, serviceId)
+                .filter(j -> j.getVehicle() != null && customer.getId().equals(j.getVehicle().getCustomer().getId()))
+                .orElseThrow(() -> new RuntimeException("Service job not found or doesn't belong to customer"));
 
         // Get time logs for assigned employees
-        List<TimeLog> timeLogs = timeLogRepository.findByJobId(serviceId);
+        List<TimeLog> timeLogs = timeLogRepository.findByJobId(job.getJobId());
 
         log.info("Service found - title: {}, status: {}, assigned employees: {}", 
-                service.getTitle(), service.getStatus(), timeLogs.size());
+                service.getTitle(), job.getStatus(), timeLogs.size());
 
-        return mapToServiceDetailResponse(service, timeLogs);
+        return mapToServiceDetailResponse(service, job, timeLogs);
     }
 
-    private ServiceListResponse mapToServiceListResponse(com.TenX.Automobile.entity.Service service) {
-        // Get the first vehicle (since we now only allow one vehicle per booking)
-        Vehicle vehicle = service.getVehicles().isEmpty() ? null : service.getVehicles().get(0);
+    private ServiceListResponse mapToServiceListResponse(Job job) {
+        // Lookup the service entity
+        com.TenX.Automobile.entity.Service service = serviceRepository.findById(job.getTypeId())
+                .orElse(null);
+
+        if (service == null) {
+            return null;
+        }
+
+        Vehicle vehicle = job.getVehicle();
 
         return ServiceListResponse.builder()
-                .serviceId(service.getJobId())
+                .serviceId(job.getJobId())
                 .title(service.getTitle())
                 .description(service.getDescription())
                 .category(service.getCategory())
-                .status(service.getStatus())
-                .arrivingDate(service.getArrivingDate())
-                .cost(service.getCost())
+                .status(job.getStatus())
+                .arrivingDate(job.getArrivingDate())
+                .cost(job.getCost())
                 .estimatedHours(service.getEstimatedHours())
                 .vehicleRegistration(vehicle != null ? vehicle.getRegistration_No() : null)
-                .vehicleBrand(vehicle != null ? vehicle.getBrand_name() : null)
+                .vehicleBrand(vehicle != null ? vehicle.getBrandName() : null)
                 .vehicleModel(vehicle != null ? vehicle.getModel() : null)
-                .bookedAt(service.getCreatedAt())
+                .bookedAt(job.getCreatedAt())
                 .build();
     }
 
-    private ServiceDetailResponse mapToServiceDetailResponse(com.TenX.Automobile.entity.Service service, List<TimeLog> timeLogs) {
+    private ServiceDetailResponse mapToServiceDetailResponse(com.TenX.Automobile.entity.Service service, Job job, List<TimeLog> timeLogs) {
         // Get vehicle information
-        Vehicle vehicle = service.getVehicles().isEmpty() ? null : service.getVehicles().get(0);
+        Vehicle vehicle = job.getVehicle();
         ServiceDetailResponse.VehicleInfo vehicleInfo = null;
         if (vehicle != null) {
             vehicleInfo = ServiceDetailResponse.VehicleInfo.builder()
                     .registrationNo(vehicle.getRegistration_No())
-                    .brandName(vehicle.getBrand_name())
+                    .brandName(vehicle.getBrandName())
                     .model(vehicle.getModel())
                     .capacity(vehicle.getCapacity())
                     .build();
         }
 
-        // Map tasks
-        List<ServiceDetailResponse.TaskInfo> taskInfos = service.getTasks().stream()
-                .map(task -> ServiceDetailResponse.TaskInfo.builder()
-                        .taskId(task.getTId())
-                        .taskTitle(task.getTaskTitle())
-                        .taskDescription(task.getTaskDescription())
-                        .status(task.getStatus())
-                        .estimatedHours(task.getEstimatedHours())
-                        .completedAt(task.getCompletedAt())
-                        .createdAt(task.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+        // Services don't have tasks - only projects have tasks
+        List<ServiceDetailResponse.TaskInfo> taskInfos = Collections.emptyList();
 
         // Map assigned employees from time logs
         List<ServiceDetailResponse.EmployeeInfo> employeeInfos = timeLogs.stream()
@@ -482,20 +508,20 @@ public class CustomerService {
                 .collect(Collectors.toList());
 
         return ServiceDetailResponse.builder()
-                .serviceId(service.getJobId())
+                .serviceId(job.getJobId())
                 .title(service.getTitle())
                 .description(service.getDescription())
                 .category(service.getCategory())
-                .status(service.getStatus())
-                .arrivingDate(service.getArrivingDate())
-                .cost(service.getCost())
+                .status(job.getStatus())
+                .arrivingDate(job.getArrivingDate())
+                .cost(job.getCost())
                 .estimatedHours(service.getEstimatedHours())
                 .imageUrl(service.getImageUrl())
                 .vehicle(vehicleInfo)
                 .tasks(taskInfos)
                 .assignedEmployees(employeeInfos)
-                .bookedAt(service.getCreatedAt())
-                .updatedAt(service.getUpdatedAt())
+                .bookedAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt())
                 .build();
     }
 }

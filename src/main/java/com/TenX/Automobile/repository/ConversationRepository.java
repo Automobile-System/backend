@@ -1,7 +1,9 @@
 package com.TenX.Automobile.repository;
 
 import com.TenX.Automobile.entity.Conversation;
+import com.TenX.Automobile.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -42,4 +44,18 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
         @Param("employeeId") UUID employeeId,
         @Param("vehicleId") UUID vehicleId
     );
+
+    /**
+     * Delete all conversations where user is a participant
+     */
+    @Modifying
+    @Query("DELETE FROM Conversation c WHERE c.participant = :user")
+    void deleteByParticipant(@Param("user") UserEntity user);
+
+    /**
+     * Delete all conversations where user is an employee
+     */
+    @Modifying
+    @Query("DELETE FROM Conversation c WHERE c.employee = :user")
+    void deleteByEmployee(@Param("user") UserEntity user);
 }

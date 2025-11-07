@@ -27,7 +27,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     Optional<Vehicle> findByRegistration_No(@Param("registrationNo") String registrationNo);
     List<Vehicle> findByCustomer_Id(UUID customerId);
     List<Vehicle> findByCustomer(Customer customer);
-    List<Vehicle> findByBrand_name(String brandName);
+    List<Vehicle> findByBrandName(String brandName);
     List<Vehicle> findByModel(String model);
     List<Vehicle> findByCapacityGreaterThanEqual(int capacity);
     long countByCustomer_Id(UUID customerId);
