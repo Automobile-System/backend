@@ -48,7 +48,9 @@ public class AdminController {
     @GetMapping("/notifications")
     public ResponseEntity<?> fetchNotifications(Authentication authentication) {
         log.info("Fetching notifications for admin: {}", authentication.getName());
-        UUID userId = UUID.fromString(authentication.getName());
+        String email = authentication.getName();
+        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UUID userId = user.getId();
         List<com.TenX.Automobile.entity.Notification> notifications = notificationService.getUserNotifications(userId);
         
         List<Map<String, Object>> response = notifications.stream()
@@ -75,7 +77,9 @@ public class AdminController {
             @PathVariable Long id,
             Authentication authentication) {
         log.info("Marking notification {} as read", id);
-        UUID userId = UUID.fromString(authentication.getName());
+        String email = authentication.getName();
+        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UUID userId = user.getId();
         notificationService.markAsRead(id, userId);
         return ResponseEntity.ok(Map.of("message", "Notification marked as read"));
     }
@@ -88,7 +92,9 @@ public class AdminController {
             @PathVariable Long id,
             Authentication authentication) {
         log.info("Deleting notification {}", id);
-        UUID userId = UUID.fromString(authentication.getName());
+        String email = authentication.getName();
+        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UUID userId = user.getId();
         notificationService.deleteNotification(id, userId);
         return ResponseEntity.ok(Map.of("message", "Notification deleted"));
     }
@@ -99,8 +105,8 @@ public class AdminController {
     @GetMapping("/user/profile")
     public ResponseEntity<Map<String, Object>> fetchUserProfile(Authentication authentication) {
         log.info("Fetching profile for admin: {}", authentication.getName());
-        UUID userId = UUID.fromString(authentication.getName());
-        com.TenX.Automobile.entity.UserEntity user = adminService.getUserById(userId);
+        String email = authentication.getName();
+        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
         
         Map<String, Object> response = Map.of(
             "id", user.getId().toString(),
@@ -619,4 +625,29 @@ public class AdminController {
             return days + " days ago";
         }
     }
+
+    // ==================== TEMPORARY FIX ENDPOINT ====================
+    
+    /**
+     * TEMPORARY: Fix user roles for existing users
+     * Use this to add missing CUSTOMER role to users
+     */
+    @PostMapping("/fix-user-role/{userId}")
+    public ResponseEntity<?> fixUserRole(@PathVariable UUID userId) {
+        log.warn("ADMIN: Fixing roles for user: {}", userId);
+        try {
+            adminService.addCustomerRoleToUser(userId);
+            return ResponseEntity.ok(Map.of(
+                "message", "Role CUSTOMER added successfully to user: " + userId,
+                "success", true
+            ));
+        } catch (Exception e) {
+            log.error("Failed to add role: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage(),
+                "success", false
+            ));
+        }
+    }
 }
+

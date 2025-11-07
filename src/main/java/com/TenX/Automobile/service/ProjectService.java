@@ -45,7 +45,6 @@ public class ProjectService {
         existing.setDescription(project.getDescription());
         existing.setEstimatedHours(project.getEstimatedHours());
         existing.setStatus(project.getStatus());
-        existing.setArrivingDate(project.getArrivingDate());
         existing.setCost(project.getCost());
 
         // replace tasks if provided

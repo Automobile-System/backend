@@ -11,11 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,8 +31,12 @@ public class AdminService {
     private final JobRepository jobRepository;
     private final PaymentRepository paymentRepository;
     private final ManageAssignJobRepository manageAssignJobRepository;
-    private final NotificationRepository notificationRepository;
     private final BaseUserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final NotificationRepository notificationRepository;
+    private final ConversationRepository conversationRepository;
+    private final MessageRepository messageRepository;
+    private final TimeLogRepository timeLogRepository;
     private final PasswordEncoder passwordEncoder;
 
     // ==================== PAGE 1: DASHBOARD ====================
@@ -59,9 +61,9 @@ public class AdminService {
             .filter(c -> c.getCreatedAt() != null && c.getCreatedAt().isAfter(startOfMonth))
             .count();
 
-        // Ongoing Services
-        Long ongoingServices = serviceRepository.findAll().stream()
-            .filter(s -> s.getStatus() == null || !"COMPLETED".equals(s.getStatus()))
+        // Ongoing Jobs (Services + Projects)
+        Long ongoingJobs = jobRepository.findAll().stream()
+            .filter(j -> j.getStatus() == null || !"COMPLETED".equals(j.getStatus()))
             .count();
 
         // Active Employees
@@ -82,7 +84,7 @@ public class AdminService {
                 .newThisMonth(newCustomersThisMonth.intValue())
                 .build())
             .ongoingServices(DashboardStatsResponse.OngoingServices.builder()
-                .value(ongoingServices.intValue())
+                .value(ongoingJobs.intValue())
                 .status("In Progress")
                 .build())
             .activeEmployees(DashboardStatsResponse.ActiveEmployees.builder()
@@ -110,15 +112,15 @@ public class AdminService {
             }
         }
 
-        // Check for services paused due to parts delay
-        Long pausedServices = serviceRepository.findAll().stream()
-            .filter(s -> "WAITING_FOR_PARTS".equals(s.getStatus()) || "PAUSED".equals(s.getStatus()))
+        // Check for jobs paused due to parts delay
+        Long pausedJobs = jobRepository.findAll().stream()
+            .filter(j -> "WAITING_FOR_PARTS".equals(j.getStatus()) || "PAUSED".equals(j.getStatus()))
             .count();
-        if (pausedServices > 0) {
+        if (pausedJobs > 0) {
             alerts.add(SystemAlertResponse.builder()
                 .id("alert-" + UUID.randomUUID().toString().substring(0, 8))
                 .type("warning")
-                .message(pausedServices + " services paused due to part delay")
+                .message(pausedJobs + " jobs paused due to part delay")
                 .timestamp(LocalDateTime.now())
                 .build());
         }
@@ -173,23 +175,25 @@ public class AdminService {
         List<Job> filteredJobs = jobs;
         if ("predefined".equals(serviceFilter)) {
             filteredJobs = jobs.stream()
-                .filter(j -> j instanceof com.TenX.Automobile.entity.Service)
+                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()))
                 .collect(Collectors.toList());
         } else if ("custom".equals(serviceFilter)) {
             filteredJobs = jobs.stream()
-                .filter(j -> j instanceof Project)
+                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()))
                 .collect(Collectors.toList());
         }
 
-        // Group by service type
+        // Group by service/project title
         Map<String, List<Job>> jobsByType = filteredJobs.stream()
             .collect(Collectors.groupingBy(job -> {
-                if (job instanceof com.TenX.Automobile.entity.Service) {
-                    com.TenX.Automobile.entity.Service service = (com.TenX.Automobile.entity.Service) job;
-                    return service.getTitle() != null ? service.getTitle() : "Service";
-                } else if (job instanceof Project) {
-                    Project project = (Project) job;
-                    return project.getTitle() != null ? project.getTitle() : "Project";
+                if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                    return serviceRepository.findById(job.getTypeId())
+                        .map(com.TenX.Automobile.entity.Service::getTitle)
+                        .orElse("Unknown Service");
+                } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                    return projectRepository.findById(job.getTypeId())
+                        .map(Project::getTitle)
+                        .orElse("Unknown Project");
                 }
                 return "Other";
             }));
@@ -222,10 +226,17 @@ public class AdminService {
             List<Job> prevJobs = jobRepository.findJobsByDateRange(prevStartDateTime, prevEndDateTime);
             Double prevRevenue = prevJobs.stream()
                 .filter(j -> {
-                    String jobType = j instanceof com.TenX.Automobile.entity.Service ? 
-                        ((com.TenX.Automobile.entity.Service) j).getTitle() : 
-                        ((Project) j).getTitle();
-                    return serviceType.equals(jobType != null ? jobType : "Other");
+                    String jobTitle = null;
+                    if (com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType())) {
+                        jobTitle = serviceRepository.findById(j.getTypeId())
+                            .map(com.TenX.Automobile.entity.Service::getTitle)
+                            .orElse("Unknown Service");
+                    } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType())) {
+                        jobTitle = projectRepository.findById(j.getTypeId())
+                            .map(Project::getTitle)
+                            .orElse("Unknown Project");
+                    }
+                    return serviceType.equals(jobTitle != null ? jobTitle : "Other");
                 })
                 .mapToDouble(j -> j.getCost() != null ? j.getCost().doubleValue() : 0.0)
                 .sum();
@@ -614,20 +625,21 @@ public class AdminService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
         LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
-        LocalDateTime endOfLastMonth = startOfMonth.minusSeconds(1);
 
         // Most Profitable Service
         ServicesAnalyticsResponse.MostProfitableService mostProfitable = getMostProfitableService();
 
-        // Total Services
-        Long totalServicesMonth = serviceRepository.findAll().stream()
-            .filter(s -> s.getStatus() != null && "COMPLETED".equals(s.getStatus()) &&
-                s.getUpdatedAt() != null && s.getUpdatedAt().isAfter(startOfMonth))
+        // Total Services - count completed SERVICE type jobs this month
+        Long totalServicesMonth = jobRepository.findAll().stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
+                j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth))
             .count();
-        Long totalServicesLastMonth = serviceRepository.findAll().stream()
-            .filter(s -> s.getStatus() != null && "COMPLETED".equals(s.getStatus()) &&
-                s.getUpdatedAt() != null && s.getUpdatedAt().isAfter(startOfLastMonth) &&
-                s.getUpdatedAt().isBefore(startOfMonth))
+        Long totalServicesLastMonth = jobRepository.findAll().stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
+                j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfLastMonth) &&
+                j.getUpdatedAt().isBefore(startOfMonth))
             .count();
         Integer changeFromLastMonth = (int) (totalServicesMonth - totalServicesLastMonth);
 
@@ -660,22 +672,27 @@ public class AdminService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
 
-        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findAll().stream()
-            .filter(s -> s.getUpdatedAt() != null && s.getUpdatedAt().isAfter(startOfMonth) &&
-                s.getStatus() != null && "COMPLETED".equals(s.getStatus()))
+        // Get completed SERVICE type jobs this month
+        List<Job> serviceJobs = jobRepository.findAll().stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth) &&
+                j.getStatus() != null && "COMPLETED".equals(j.getStatus()))
             .collect(Collectors.toList());
 
         Map<String, Double> profitByType = new HashMap<>();
         Map<String, Double> revenueByType = new HashMap<>();
 
-        for (com.TenX.Automobile.entity.Service service : services) {
-            String type = service.getTitle() != null ? service.getTitle() : "Service";
-            Double revenue = service.getCost() != null ? service.getCost().doubleValue() : 0.0;
-            Double cost = revenue * 0.5; // Simplified
-            Double profit = revenue - cost;
+        for (Job job : serviceJobs) {
+            // Look up the actual service details using typeId
+            serviceRepository.findById(job.getTypeId()).ifPresent(service -> {
+                String type = service.getTitle() != null ? service.getTitle() : "Service";
+                Double revenue = job.getCost() != null ? job.getCost().doubleValue() : 0.0;
+                Double cost = revenue * 0.5; // Simplified
+                Double profit = revenue - cost;
 
-            profitByType.put(type, profitByType.getOrDefault(type, 0.0) + profit);
-            revenueByType.put(type, revenueByType.getOrDefault(type, 0.0) + revenue);
+                profitByType.put(type, profitByType.getOrDefault(type, 0.0) + profit);
+                revenueByType.put(type, revenueByType.getOrDefault(type, 0.0) + revenue);
+            });
         }
 
         String mostProfitableType = profitByType.entrySet().stream()
@@ -699,14 +716,16 @@ public class AdminService {
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
         LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
 
-        Long totalServicesMonth = serviceRepository.findAll().stream()
-            .filter(s -> s.getStatus() != null && "COMPLETED".equals(s.getStatus()) &&
-                s.getUpdatedAt() != null && s.getUpdatedAt().isAfter(startOfMonth))
+        Long totalServicesMonth = jobRepository.findAll().stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
+                j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth))
             .count();
-        Long totalServicesLastMonth = serviceRepository.findAll().stream()
-            .filter(s -> s.getStatus() != null && "COMPLETED".equals(s.getStatus()) &&
-                s.getUpdatedAt() != null && s.getUpdatedAt().isAfter(startOfLastMonth) &&
-                s.getUpdatedAt().isBefore(startOfMonth))
+        Long totalServicesLastMonth = jobRepository.findAll().stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
+                j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfLastMonth) &&
+                j.getUpdatedAt().isBefore(startOfMonth))
             .count();
 
         Integer changeFromLastMonth = (int) (totalServicesMonth - totalServicesLastMonth);
@@ -737,36 +756,46 @@ public class AdminService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
         LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
-        LocalDateTime endOfLastMonth = startOfMonth.minusSeconds(1);
 
-        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findAll().stream()
-            .filter(s -> s.getUpdatedAt() != null && s.getUpdatedAt().isAfter(startOfMonth) &&
-                s.getStatus() != null && "COMPLETED".equals(s.getStatus()))
+        // Get completed SERVICE type jobs this month
+        List<Job> serviceJobs = jobRepository.findAll().stream()
+            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth) &&
+                j.getStatus() != null && "COMPLETED".equals(j.getStatus()))
             .collect(Collectors.toList());
 
-        Map<String, List<com.TenX.Automobile.entity.Service>> servicesByType = services.stream()
-            .collect(Collectors.groupingBy(s -> s.getTitle() != null ? s.getTitle() : "Service"));
+        // Group jobs by service title
+        Map<String, List<Job>> jobsByServiceType = new HashMap<>();
+        for (Job job : serviceJobs) {
+            serviceRepository.findById(job.getTypeId()).ifPresent(service -> {
+                String title = service.getTitle() != null ? service.getTitle() : "Service";
+                jobsByServiceType.computeIfAbsent(title, k -> new ArrayList<>()).add(job);
+            });
+        }
 
         List<ServicesAnalyticsResponse.ServicePerformance> performance = new ArrayList<>();
         int idCounter = 1;
 
-        for (Map.Entry<String, List<com.TenX.Automobile.entity.Service>> entry : servicesByType.entrySet()) {
+        for (Map.Entry<String, List<Job>> entry : jobsByServiceType.entrySet()) {
             String serviceName = entry.getKey();
-            List<com.TenX.Automobile.entity.Service> typeServices = entry.getValue();
+            List<Job> typeJobs = entry.getValue();
 
-            Integer totalBookings = typeServices.size();
+            Integer totalBookings = typeJobs.size();
             
-            // Average duration
-            Double avgDurationMinutes = typeServices.stream()
-                .mapToDouble(s -> s.getEstimatedHours() != null ? s.getEstimatedHours() * 60 : 45.0)
-                .average()
-                .orElse(45.0);
+            // Average duration - get from service templates
+            Double avgDurationMinutes = 45.0;
+            if (!typeJobs.isEmpty()) {
+                Long firstServiceId = typeJobs.get(0).getTypeId();
+                avgDurationMinutes = serviceRepository.findById(firstServiceId)
+                    .map(s -> s.getEstimatedHours() != null ? s.getEstimatedHours() * 60 : 45.0)
+                    .orElse(45.0);
+            }
             String avgDuration = formatDuration(avgDurationMinutes);
 
             // Average profit per service
-            Double avgProfit = typeServices.stream()
-                .mapToDouble(s -> {
-                    Double revenue = s.getCost() != null ? s.getCost().doubleValue() : 0.0;
+            Double avgProfit = typeJobs.stream()
+                .mapToDouble(j -> {
+                    Double revenue = j.getCost() != null ? j.getCost().doubleValue() : 0.0;
                     Double cost = revenue * 0.5;
                     return revenue - cost;
                 })
@@ -776,17 +805,22 @@ public class AdminService {
             // Customer rating (mock)
             Double customerRating = 4.5 + (Math.random() * 0.5);
 
-            // Trend calculation
-            List<com.TenX.Automobile.entity.Service> prevServices = serviceRepository.findAll().stream()
-                .filter(s -> {
-                    String sType = s.getTitle() != null ? s.getTitle() : "Service";
-                    return serviceName.equals(sType) && s.getUpdatedAt() != null &&
-                        s.getUpdatedAt().isAfter(startOfLastMonth) && s.getUpdatedAt().isBefore(startOfMonth) &&
-                        "COMPLETED".equals(s.getStatus());
+            // Trend calculation - compare with last month
+            Long prevMonthCount = jobRepository.findAll().stream()
+                .filter(j -> {
+                    if (!com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType())) return false;
+                    if (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())) return false;
+                    if (j.getUpdatedAt() == null) return false;
+                    if (!j.getUpdatedAt().isAfter(startOfLastMonth) || !j.getUpdatedAt().isBefore(startOfMonth)) return false;
+                    
+                    // Check if service title matches
+                    return serviceRepository.findById(j.getTypeId())
+                        .map(s -> serviceName.equals(s.getTitle()))
+                        .orElse(false);
                 })
-                .collect(Collectors.toList());
-            Integer prevBookings = prevServices.size();
-            Double trend = prevBookings > 0 ? ((totalBookings - prevBookings.doubleValue()) / prevBookings) * 100 : 15.0;
+                .count();
+            
+            Double trend = prevMonthCount > 0 ? ((totalBookings - prevMonthCount.doubleValue()) / prevMonthCount) * 100 : 15.0;
 
             performance.add(ServicesAnalyticsResponse.ServicePerformance.builder()
                 .id("S" + String.format("%03d", idCounter++))
@@ -960,7 +994,7 @@ public class AdminService {
         
         return services.stream()
             .map(service -> SettingsServicesResponse.builder()
-                .serviceId("srv_" + service.getJobId())
+                .serviceId("srv_" + service.getServiceId())
                 .serviceName(service.getTitle() != null ? service.getTitle() : "Service")
                 .basePrice(service.getCost() != null ? service.getCost().doubleValue() : 0.0)
                 .duration(formatDuration(service.getEstimatedHours() != null ? service.getEstimatedHours() : 1.0))
@@ -1143,7 +1177,51 @@ public class AdminService {
     public void deleteCustomer(String customerId) {
         Customer customer = customerRepository.findByCustomerId(customerId)
             .orElseThrow(() -> new RuntimeException("Customer not found"));
+        
+        // Use the helper method to delete all related user data
+        deleteUserRelatedData(customer, "customer", customerId);
+        
+        // Finally, delete the customer (vehicles and jobs will cascade due to CascadeType.ALL)
         customerRepository.delete(customer);
+        log.info("Successfully deleted customer: {}", customerId);
+    }
+
+    /**
+     * Helper method to delete all related data for any user entity
+     * Prevents foreign key constraint violations when deleting users
+     * 
+     * @param user The user entity to delete related data for
+     * @param userType Type of user (for logging purposes)
+     * @param userId User identifier (for logging purposes)
+     */
+    private void deleteUserRelatedData(UserEntity user, String userType, String userId) {
+        // 1. Delete refresh tokens
+        refreshTokenRepository.deleteByUser(user);
+        log.info("Deleted refresh tokens for {}: {}", userType, userId);
+        
+        // 2. Delete notifications
+        notificationRepository.deleteByUser(user);
+        log.info("Deleted notifications for {}: {}", userType, userId);
+        
+        // 3. Delete messages sent by this user
+        messageRepository.deleteBySender(user);
+        log.info("Deleted messages for {}: {}", userType, userId);
+        
+        // 4. Delete conversations where user is participant or employee
+        conversationRepository.deleteByParticipant(user);
+        conversationRepository.deleteByEmployee(user);
+        log.info("Deleted conversations for {}: {}", userType, userId);
+        
+        // 5. If user is an employee, delete time logs and job assignments
+        if (user instanceof Employee) {
+            Employee employee = (Employee) user;
+            timeLogRepository.deleteByEmployee(employee);
+            log.info("Deleted time logs for employee: {}", userId);
+            
+            manageAssignJobRepository.deleteByEmployee(employee);
+            manageAssignJobRepository.deleteByManager(employee);
+            log.info("Deleted job assignments for employee: {}", userId);
+        }
     }
 
     public CustomerListResponse activateCustomer(String customerId) {
@@ -1177,6 +1255,11 @@ public class AdminService {
     public UserEntity getUserById(UUID userId) {
         return userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public UserEntity getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
     }
 
     private Double calculateProfitForPeriod(LocalDateTime start, LocalDateTime end) {
@@ -1233,8 +1316,11 @@ public class AdminService {
             Double totalSpent = paymentRepository.sumAmountByCustomerId(customer.getId());
             if (totalSpent == null) totalSpent = 0.0;
             
-            Long servicesUsed = serviceRepository.countCompletedServicesByCustomerId(customer.getId());
-            if (servicesUsed == null) servicesUsed = 0L;
+            // Count completed SERVICE type jobs for this customer's vehicles
+            Long servicesUsed = jobRepository.findByCustomerId(customer.getId()).stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                    "COMPLETED".equals(j.getStatus()))
+                .count();
 
             if (totalSpent > maxSpent || (totalSpent.equals(maxSpent) && servicesUsed > maxServices)) {
                 maxSpent = totalSpent;
@@ -1314,5 +1400,27 @@ public class AdminService {
             .lastServiceDate(lastServiceDate)
             .status(status)
             .build();
+    }
+
+    /**
+     * TEMPORARY: Add CUSTOMER role to an existing user
+     * This is a fix for users who were created without roles
+     */
+    public void addCustomerRoleToUser(UUID userId) {
+        log.warn("Adding CUSTOMER role to user: {}", userId);
+        
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        
+        // Check if user already has CUSTOMER role
+        if (user.getRoles().contains(Role.CUSTOMER)) {
+            throw new RuntimeException("User already has CUSTOMER role");
+        }
+        
+        // Add the CUSTOMER role
+        user.addRole(Role.CUSTOMER);
+        userRepository.save(user);
+        
+        log.info("Successfully added CUSTOMER role to user: {} ({})", user.getEmail(), userId);
     }
 }

@@ -13,27 +13,34 @@ import java.util.UUID;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
     
+    // Find tasks by project ID
+    List<Task> findByProjectProjectId(Long projectId);
+    
+    // Find tasks by project ID and status
+    List<Task> findByProjectProjectIdAndStatus(Long projectId, String status);
+    
     /**
      * Find all tasks assigned to an employee via ManageAssignJob
-     * Returns ALL tasks including completed, sorted by deadline ASC
+     * Tasks belong to Projects, Projects are linked to Jobs, Jobs are assigned to Employees
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN t.project p " +
-           "JOIN ManageAssignJob maj ON maj.job.jobId = p.jobId " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
-           "ORDER BY p.arrivingDate ASC")
+           "ORDER BY t.createdAt ASC")
     List<Task> findTasksByEmployeeId(@Param("employeeId") UUID employeeId);
     
     /**
      * Find tasks assigned to an employee filtered by status
-     * Returns tasks sorted by deadline ASC
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN t.project p " +
-           "JOIN ManageAssignJob maj ON maj.job.jobId = p.jobId " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "AND t.status = :status " +
-           "ORDER BY p.arrivingDate ASC")
+           "ORDER BY t.createdAt ASC")
     List<Task> findTasksByEmployeeIdAndStatus(
         @Param("employeeId") UUID employeeId,
         @Param("status") String status
@@ -44,10 +51,11 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN t.project p " +
-           "JOIN ManageAssignJob maj ON maj.job.jobId = p.jobId " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
-           "AND p.arrivingDate >= :startDate " +
-           "AND p.arrivingDate <= :endDate")
+           "AND t.createdAt >= :startDate " +
+           "AND t.createdAt <= :endDate")
     List<Task> findTasksByEmployeeIdAndDateRange(
         @Param("employeeId") UUID employeeId,
         @Param("startDate") LocalDateTime startDate,
@@ -59,9 +67,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT COUNT(DISTINCT t) FROM Task t " +
            "JOIN t.project p " +
-           "JOIN ManageAssignJob maj ON maj.job.jobId = p.jobId " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
-           "AND CAST(p.arrivingDate AS date) = CURRENT_DATE")
+           "AND CAST(t.createdAt AS date) = CURRENT_DATE")
     Long countTasksTodayByEmployeeId(@Param("employeeId") UUID employeeId);
     
     /**
@@ -69,7 +78,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT COUNT(DISTINCT t) FROM Task t " +
            "JOIN t.project p " +
-           "JOIN ManageAssignJob maj ON maj.job.jobId = p.jobId " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "AND t.status = 'COMPLETED' " +
            "AND YEAR(t.completedAt) = YEAR(CURRENT_DATE) " +

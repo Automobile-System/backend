@@ -15,7 +15,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -63,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // Set authentication in security context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("Successfully authenticated user: {} with roles: {}", 
+                log.info("Successfully authenticated user: {} with roles: {}", 
                         email, userDetails.getAuthorities());
             }
         } catch (Exception ex) {

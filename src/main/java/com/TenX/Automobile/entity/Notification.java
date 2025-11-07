@@ -40,7 +40,7 @@ public class Notification {
   private Boolean isRead = false;
 
   // Relationship with UserEntity - will serialize with discriminator
-  @ManyToOne(fetch = FetchType.EAGER)  // Changed to EAGER to load user details
+  @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)  // Changed to EAGER to load user details
   @JoinColumn(name = "user_id", nullable = false)
   @JsonIgnoreProperties({"password", "refreshTokens", "loginAttempts", "hibernateLazyInitializer"})
   private UserEntity user;

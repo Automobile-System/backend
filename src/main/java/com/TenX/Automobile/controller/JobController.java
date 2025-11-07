@@ -1,7 +1,6 @@
 package com.TenX.Automobile.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.TenX.Automobile.entity.Job;
+import com.TenX.Automobile.dto.request.JobRequest;
+import com.TenX.Automobile.dto.response.JobResponse;
 import com.TenX.Automobile.service.JobService;
 
 import jakarta.validation.Valid;
@@ -32,46 +32,59 @@ public class JobController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<Job>> getAllJobs() {
-        List<Job> jobs = jobService.findAll();
+    public ResponseEntity<List<JobResponse>> getAllJobs() {
+        List<JobResponse> jobs = jobService.findAll();
         return ResponseEntity.ok(jobs);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getJobById(@PathVariable Long id) {
-        Optional<Job> job = jobService.findById(id);
-        if (job.isPresent()) return ResponseEntity.ok(job.get());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Job not found");
+        try {
+            JobResponse job = jobService.findById(id);
+            return ResponseEntity.ok(job);
+        } catch (RuntimeException e) {
+            log.error("Job not found with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Job not found with id: " + id);
+        }
     }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> createJob(@Valid @RequestBody Job job) {
+    public ResponseEntity<?> createJob(@Valid @RequestBody JobRequest request) {
         try {
-            Job saved = jobService.create(job);
-            return new ResponseEntity<>(saved, HttpStatus.CREATED);
+            JobResponse created = jobService.create(request);
+            return new ResponseEntity<>(created, HttpStatus.CREATED);
         } catch (Exception e) {
             log.error("Failed to create job", e);
-            return new ResponseEntity<>("Failed to create job", HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> updateJob(@PathVariable Long id, @RequestBody Job job) {
-        Optional<Job> opt = jobService.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Job not found");
-        Job updated = jobService.update(id, job);
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<?> updateJob(@PathVariable Long id, @Valid @RequestBody JobRequest request) {
+        try {
+            JobResponse updated = jobService.update(id, request);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            log.error("Failed to update job with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteJob(@PathVariable Long id) {
-        Optional<Job> opt = jobService.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Job not found");
-        jobService.delete(id);
-        return ResponseEntity.ok("Job deleted");
+        try {
+            jobService.delete(id);
+            return ResponseEntity.ok("Job deleted successfully");
+        } catch (RuntimeException e) {
+            log.error("Failed to delete job with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        }
     }
 }

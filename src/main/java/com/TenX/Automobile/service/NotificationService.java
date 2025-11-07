@@ -140,7 +140,13 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Task not found"));
         
         Project project = task.getProject();
-        Long jobId = project != null ? project.getJobId() : null;
+        // Find the job for this project
+        Long jobId = null;
+        if (project != null) {
+            jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+                    .map(Job::getJobId)
+                    .orElse(null);
+        }
         
         String message = String.format(
             "📋 New Task Assigned: '%s'\n" +
@@ -172,7 +178,13 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         
         Project project = task.getProject();
-        Long jobId = project != null ? project.getJobId() : null;
+        // Find the job for this project
+        Long jobId = null;
+        if (project != null) {
+            jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+                    .map(Job::getJobId)
+                    .orElse(null);
+        }
         
         String message = String.format(
             "✅ Task Completed: '%s'\n" +
@@ -200,7 +212,13 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Task not found"));
         
         Project project = task.getProject();
-        Long jobId = project != null ? project.getJobId() : null;
+        // Find the job for this project
+        Long jobId = null;
+        if (project != null) {
+            jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+                    .map(Job::getJobId)
+                    .orElse(null);
+        }
         
         String message = String.format(
             "⏰ Task Deadline Approaching: '%s'\n" +
@@ -226,6 +244,11 @@ public class NotificationService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         
+        // Find the job associated with this project
+        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+                .map(Job::getJobId)
+                .orElse(null);
+        
         String message = String.format(
             "🔔 Project Status Update\n" +
             "Project: %s\n" +
@@ -236,7 +259,7 @@ public class NotificationService {
             project.getEstimatedHours() != null ? project.getEstimatedHours() : 0.0
         );
         
-        createNotification(customerId, message, NotificationType.BOTH, project.getJobId());
+        createNotification(customerId, message, NotificationType.BOTH, jobId);
         log.info("Project status change notification sent for project: {}", projectId);
     }
 
@@ -248,6 +271,11 @@ public class NotificationService {
         com.TenX.Automobile.entity.Service serviceEntity = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
         
+        // Find the job associated with this service
+        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.SERVICE, serviceEntity.getServiceId())
+                .map(Job::getJobId)
+                .orElse(null);
+        
         String message = String.format(
             "🔔 Service Status Update\n" +
             "Service: %s\n" +
@@ -258,7 +286,7 @@ public class NotificationService {
             newStatus
         );
         
-        createNotification(customerId, message, NotificationType.BOTH, serviceEntity.getJobId());
+        createNotification(customerId, message, NotificationType.BOTH, jobId);
         log.info("Service status change notification sent for service: {}", serviceId);
     }
 
@@ -269,6 +297,11 @@ public class NotificationService {
     public void notifyProjectAssignment(UUID employeeId, Long projectId, String assignedByName) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
+        
+        // Find the job associated with this project
+        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+                .map(Job::getJobId)
+                .orElse(null);
         
         String message = String.format(
             "🔧 New Project Assigned\n" +
@@ -282,7 +315,7 @@ public class NotificationService {
             project.getEstimatedHours() != null ? project.getEstimatedHours() : 0.0
         );
         
-        createNotification(employeeId, message, NotificationType.SYSTEM, project.getJobId());
+        createNotification(employeeId, message, NotificationType.SYSTEM, jobId);
     }
 
     /**
@@ -296,6 +329,11 @@ public class NotificationService {
         UserEntity employee = employeeRepository.findById(requestedByEmployeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         
+        // Find the job associated with this project
+        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+                .map(Job::getJobId)
+                .orElse(null);
+        
         String message = String.format(
             "📝 Project Approval Required\n" +
             "Project: %s\n" +
@@ -306,7 +344,7 @@ public class NotificationService {
             employee.getLastName() != null ? employee.getLastName() : ""
         );
         
-        notifyAllManagers(message, project.getJobId());
+        notifyAllManagers(message, jobId);
     }
 
     /**

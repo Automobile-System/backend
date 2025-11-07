@@ -1,7 +1,9 @@
 package com.TenX.Automobile.repository;
 
 import com.TenX.Automobile.entity.Message;
+import com.TenX.Automobile.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,4 +28,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
            "WHERE m.conversation.conversationId = :conversationId " +
            "ORDER BY m.timestamp DESC")
     List<Message> findLastMessagesByConversationId(@Param("conversationId") Long conversationId);
+
+    /**
+     * Delete all messages sent by a user
+     */
+    @Modifying
+    @Query("DELETE FROM Message m WHERE m.sender = :user")
+    void deleteBySender(@Param("user") UserEntity user);
 }

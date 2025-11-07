@@ -1,7 +1,6 @@
 package com.TenX.Automobile.service;
 
 import com.TenX.Automobile.entity.LoginAttempt;
-import com.TenX.Automobile.entity.UserEntity;
 import com.TenX.Automobile.repository.LoginAttemptRepository;
 import com.TenX.Automobile.repository.BaseUserRepository;
 import com.TenX.Automobile.security.constants.SecurityConstants;

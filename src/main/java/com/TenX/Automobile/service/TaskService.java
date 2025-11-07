@@ -13,10 +13,12 @@ import org.springframework.stereotype.Service;
 import com.TenX.Automobile.dto.response.AssignedTaskResponse;
 import com.TenX.Automobile.dto.response.CalendarEventResponse;
 import com.TenX.Automobile.dto.response.DashboardSummaryResponse;
+import com.TenX.Automobile.entity.Job;
 import com.TenX.Automobile.entity.Project;
 import com.TenX.Automobile.entity.Task;
 import com.TenX.Automobile.entity.TimeLog;
 import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ProjectRepository;
 import com.TenX.Automobile.repository.TaskRepository;
 import com.TenX.Automobile.repository.TimeLogRepository;
@@ -34,6 +36,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final TimeLogRepository timeLogRepository;
+    private final JobRepository jobRepository;
 
     public List<Task> findAll() {
         return taskRepository.findAll();
@@ -44,8 +47,8 @@ public class TaskService {
     }
 
     public Task create(Task task) {
-        if (task.getProject() != null && task.getProject().getJobId() != null) {
-            Project p = projectRepository.findById(task.getProject().getJobId()).orElseThrow(() -> new RuntimeException("Project not found"));
+        if (task.getProject() != null && task.getProject().getProjectId() != null) {
+            Project p = projectRepository.findById(task.getProject().getProjectId()).orElseThrow(() -> new RuntimeException("Project not found"));
             task.setProject(p);
         }
         return taskRepository.save(task);
@@ -58,8 +61,8 @@ public class TaskService {
         existing.setEstimatedHours(task.getEstimatedHours());
         existing.setStatus(task.getStatus());
         existing.setCompletedAt(task.getCompletedAt());
-        if (task.getProject() != null && task.getProject().getJobId() != null) {
-            Project p = projectRepository.findById(task.getProject().getJobId()).orElseThrow(() -> new RuntimeException("Project not found"));
+        if (task.getProject() != null && task.getProject().getProjectId() != null) {
+            Project p = projectRepository.findById(task.getProject().getProjectId()).orElseThrow(() -> new RuntimeException("Project not found"));
             existing.setProject(p);
         }
         return taskRepository.save(existing);
@@ -111,26 +114,32 @@ public class TaskService {
 
         // Start timer in TimeLog
         if (task.getProject() != null) {
-            Long jobId = task.getProject().getJobId();
-            Optional<TimeLog> existingLog = timeLogRepository.findByJob_JobId(jobId);
+            // Find the Job associated with this project
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
             
-            if (existingLog.isEmpty()) {
-                // Create new TimeLog entry
-                TimeLog timeLog = new TimeLog();
-                timeLog.setJob(task.getProject());
-                timeLog.setStartTime(LocalDateTime.now());
-                timeLog.setDescription("Timer started for task: " + task.getTaskTitle());
-                timeLogRepository.save(timeLog);
-                log.info("TimeLog created for job ID: {}", jobId);
-            } else {
-                // Resume existing timer if paused
-                TimeLog timeLog = existingLog.get();
-                if (timeLog.getEndTime() != null) {
-                    // Resume paused timer
+            if (jobOpt.isPresent()) {
+                Job job = jobOpt.get();
+                Long jobId = job.getJobId();
+                Optional<TimeLog> existingLog = timeLogRepository.findByJob_JobId(jobId);
+                
+                if (existingLog.isEmpty()) {
+                    // Create new TimeLog entry
+                    TimeLog timeLog = new TimeLog();
+                    timeLog.setJob(job);
                     timeLog.setStartTime(LocalDateTime.now());
-                    timeLog.setEndTime(null);
+                    timeLog.setDescription("Timer started for task: " + task.getTaskTitle());
                     timeLogRepository.save(timeLog);
-                    log.info("TimeLog resumed for job ID: {}", jobId);
+                    log.info("TimeLog created for job ID: {}", jobId);
+                } else {
+                    // Resume existing timer if paused
+                    TimeLog timeLog = existingLog.get();
+                    if (timeLog.getEndTime() != null) {
+                        // Resume paused timer
+                        timeLog.setStartTime(LocalDateTime.now());
+                        timeLog.setEndTime(null);
+                        timeLogRepository.save(timeLog);
+                        log.info("TimeLog resumed for job ID: {}", jobId);
+                    }
                 }
             }
         }
@@ -171,21 +180,26 @@ public class TaskService {
 
         // Pause timer in TimeLog
         if (task.getProject() != null) {
-            Long jobId = task.getProject().getJobId();
-            Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+            // Find the Job associated with this project
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
             
-            if (timeLogOpt.isPresent()) {
-                TimeLog timeLog = timeLogOpt.get();
-                if (timeLog.getStartTime() != null && timeLog.getEndTime() == null) {
-                    // Stop timer and calculate hours worked so far
-                    timeLog.setEndTime(LocalDateTime.now());
-                    timeLog.setDescription(
-                        (timeLog.getDescription() != null ? timeLog.getDescription() + "\n" : "") +
-                        "[PAUSED] Reason: " + reason + (notes != null ? ". Notes: " + notes : "")
-                    );
-                    timeLog.calculateHoursWorked();
-                    timeLogRepository.save(timeLog);
-                    log.info("TimeLog paused for job ID: {}", jobId);
+            if (jobOpt.isPresent()) {
+                Long jobId = jobOpt.get().getJobId();
+                Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+                
+                if (timeLogOpt.isPresent()) {
+                    TimeLog timeLog = timeLogOpt.get();
+                    if (timeLog.getStartTime() != null && timeLog.getEndTime() == null) {
+                        // Stop timer and calculate hours worked so far
+                        timeLog.setEndTime(LocalDateTime.now());
+                        timeLog.setDescription(
+                            (timeLog.getDescription() != null ? timeLog.getDescription() + "\n" : "") +
+                            "[PAUSED] Reason: " + reason + (notes != null ? ". Notes: " + notes : "")
+                        );
+                        timeLog.calculateHoursWorked();
+                        timeLogRepository.save(timeLog);
+                        log.info("TimeLog paused for job ID: {}", jobId);
+                    }
                 }
             }
         }
@@ -213,28 +227,34 @@ public class TaskService {
 
         // Resume timer in TimeLog
         if (task.getProject() != null) {
-            Long jobId = task.getProject().getJobId();
-            Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+            // Find the Job associated with this project
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
             
-            if (timeLogOpt.isPresent()) {
-                TimeLog timeLog = timeLogOpt.get();
-                // Start new timer session (or resume existing)
-                timeLog.setStartTime(LocalDateTime.now());
-                timeLog.setEndTime(null);
-                timeLog.setDescription(
-                    (timeLog.getDescription() != null ? timeLog.getDescription() + "\n" : "") +
-                    "[RESUMED] Task resumed"
-                );
-                timeLogRepository.save(timeLog);
-                log.info("TimeLog resumed for job ID: {}", jobId);
-            } else {
-                // Create new TimeLog if none exists
-                TimeLog timeLog = new TimeLog();
-                timeLog.setJob(task.getProject());
-                timeLog.setStartTime(LocalDateTime.now());
-                timeLog.setDescription("Timer started (resumed) for task: " + task.getTaskTitle());
-                timeLogRepository.save(timeLog);
-                log.info("TimeLog created for resumed task, job ID: {}", jobId);
+            if (jobOpt.isPresent()) {
+                Job job = jobOpt.get();
+                Long jobId = job.getJobId();
+                Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+                
+                if (timeLogOpt.isPresent()) {
+                    TimeLog timeLog = timeLogOpt.get();
+                    // Start new timer session (or resume existing)
+                    timeLog.setStartTime(LocalDateTime.now());
+                    timeLog.setEndTime(null);
+                    timeLog.setDescription(
+                        (timeLog.getDescription() != null ? timeLog.getDescription() + "\n" : "") +
+                        "[RESUMED] Task resumed"
+                    );
+                    timeLogRepository.save(timeLog);
+                    log.info("TimeLog resumed for job ID: {}", jobId);
+                } else {
+                    // Create new TimeLog if none exists
+                    TimeLog timeLog = new TimeLog();
+                    timeLog.setJob(job);
+                    timeLog.setStartTime(LocalDateTime.now());
+                    timeLog.setDescription("Timer started (resumed) for task: " + task.getTaskTitle());
+                    timeLogRepository.save(timeLog);
+                    log.info("TimeLog created for resumed task, job ID: {}", jobId);
+                }
             }
         }
 
@@ -262,32 +282,38 @@ public class TaskService {
 
         // Stop timer in TimeLog
         if (task.getProject() != null) {
-            Long jobId = task.getProject().getJobId();
-            Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+            // Find the Job associated with this project
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
             
-            if (timeLogOpt.isPresent()) {
-                TimeLog timeLog = timeLogOpt.get();
-                if (timeLog.getEndTime() == null) {
-                    // Stop timer and calculate final hours
+            if (jobOpt.isPresent()) {
+                Job job = jobOpt.get();
+                Long jobId = job.getJobId();
+                Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+                
+                if (timeLogOpt.isPresent()) {
+                    TimeLog timeLog = timeLogOpt.get();
+                    if (timeLog.getEndTime() == null) {
+                        // Stop timer and calculate final hours
+                        timeLog.setEndTime(LocalDateTime.now());
+                        timeLog.setDescription(
+                            (timeLog.getDescription() != null ? timeLog.getDescription() + "\n" : "") +
+                            "[COMPLETED] Task completed"
+                        );
+                        timeLog.calculateHoursWorked();
+                        timeLogRepository.save(timeLog);
+                        log.info("TimeLog completed for job ID: {}", jobId);
+                    }
+                } else {
+                    // Create TimeLog entry if none exists (shouldn't happen, but handle it)
+                    TimeLog timeLog = new TimeLog();
+                    timeLog.setJob(job);
+                    timeLog.setStartTime(LocalDateTime.now());
                     timeLog.setEndTime(LocalDateTime.now());
-                    timeLog.setDescription(
-                        (timeLog.getDescription() != null ? timeLog.getDescription() + "\n" : "") +
-                        "[COMPLETED] Task completed"
-                    );
+                    timeLog.setDescription("Timer created and completed for task: " + task.getTaskTitle());
                     timeLog.calculateHoursWorked();
                     timeLogRepository.save(timeLog);
-                    log.info("TimeLog completed for job ID: {}", jobId);
+                    log.info("TimeLog created and completed for job ID: {}", jobId);
                 }
-            } else {
-                // Create TimeLog entry if none exists (shouldn't happen, but handle it)
-                TimeLog timeLog = new TimeLog();
-                timeLog.setJob(task.getProject());
-                timeLog.setStartTime(LocalDateTime.now());
-                timeLog.setEndTime(LocalDateTime.now());
-                timeLog.setDescription("Timer created and completed for task: " + task.getTaskTitle());
-                timeLog.calculateHoursWorked();
-                timeLogRepository.save(timeLog);
-                log.info("TimeLog created and completed for job ID: {}", jobId);
             }
         }
 
@@ -346,24 +372,28 @@ public class TaskService {
         UUID vehicleId = null;
         String vehicleRegNo = null;
         String customerName = null;
+        LocalDateTime deadline = null;
         
-        if (project.getVehicles() != null && !project.getVehicles().isEmpty()) {
-            Vehicle vehicle = project.getVehicles().get(0);
-            vehicleId = vehicle.getV_Id();
-            vehicleRegNo = vehicle.getRegistration_No();
-            
-            if (vehicle.getCustomer() != null) {
-                customerName = vehicle.getCustomer().getFirstName() + " " + 
-                              (vehicle.getCustomer().getLastName() != null ? 
-                               vehicle.getCustomer().getLastName() : "");
+        // Find the Job associated with this project to get vehicle and deadline
+        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId());
+        if (jobOpt.isPresent()) {
+            Job job = jobOpt.get();
+            Vehicle vehicle = job.getVehicle();
+            if (vehicle != null) {
+                vehicleId = vehicle.getV_Id();
+                vehicleRegNo = vehicle.getRegistration_No();
+                
+                if (vehicle.getCustomer() != null) {
+                    customerName = vehicle.getCustomer().getFirstName() + " " + 
+                                  (vehicle.getCustomer().getLastName() != null ? 
+                                   vehicle.getCustomer().getLastName() : "");
+                }
             }
+            deadline = job.getArrivingDate();
         }
 
         // Calculate time spent from TimeLog
         Double timeSpent = calculateTimeSpentForTask(task);
-
-        // Use arrivingDate as deadline, or completedAt if available
-        LocalDateTime deadline = project.getArrivingDate();
 
         return AssignedTaskResponse.builder()
                 .id(task.getTId())
@@ -391,14 +421,23 @@ public class TaskService {
         }
 
         String vehicleRegNo = null;
-        if (project.getVehicles() != null && !project.getVehicles().isEmpty()) {
-            vehicleRegNo = project.getVehicles().get(0).getRegistration_No();
+        LocalDateTime startTime = null;
+        LocalDateTime endTime = null;
+        
+        // Find the Job associated with this project to get vehicle and times
+        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId());
+        if (jobOpt.isPresent()) {
+            Job job = jobOpt.get();
+            Vehicle vehicle = job.getVehicle();
+            if (vehicle != null) {
+                vehicleRegNo = vehicle.getRegistration_No();
+            }
+            
+            // Use job's arrivingDate as startTime
+            startTime = job.getArrivingDate();
+            endTime = startTime != null && task.getEstimatedHours() != null ?
+                    startTime.plusHours(task.getEstimatedHours().longValue()) : startTime;
         }
-
-        // Use arrivingDate as startTime, estimate endTime based on estimated hours
-        LocalDateTime startTime = project.getArrivingDate();
-        LocalDateTime endTime = startTime != null && task.getEstimatedHours() != null ?
-                startTime.plusHours(task.getEstimatedHours().longValue()) : startTime;
 
         return CalendarEventResponse.builder()
                 .id(task.getTId())
@@ -417,16 +456,21 @@ public class TaskService {
             return 0.0;
         }
         
-        Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(task.getProject().getJobId());
-        if (timeLogOpt.isPresent()) {
-            TimeLog timeLog = timeLogOpt.get();
-            if (timeLog.getHoursWorked() != null) {
-                return timeLog.getHoursWorked();
-            }
-            // Calculate from start and end time if hoursWorked is null
-            if (timeLog.getStartTime() != null && timeLog.getEndTime() != null) {
-                long minutes = java.time.Duration.between(timeLog.getStartTime(), timeLog.getEndTime()).toMinutes();
-                return minutes / 60.0;
+        // Find the Job associated with this project
+        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
+        if (jobOpt.isPresent()) {
+            Long jobId = jobOpt.get().getJobId();
+            Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);
+            if (timeLogOpt.isPresent()) {
+                TimeLog timeLog = timeLogOpt.get();
+                if (timeLog.getHoursWorked() != null) {
+                    return timeLog.getHoursWorked();
+                }
+                // Calculate from start and end time if hoursWorked is null
+                if (timeLog.getStartTime() != null && timeLog.getEndTime() != null) {
+                    long minutes = java.time.Duration.between(timeLog.getStartTime(), timeLog.getEndTime()).toMinutes();
+                    return minutes / 60.0;
+                }
             }
         }
         return 0.0;
