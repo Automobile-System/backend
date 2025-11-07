@@ -72,7 +72,17 @@ public class BookingService {
             // Find the booking count for this date
             Long bookedCount = jobCounts.stream()
                     .filter(obj -> {
-                        LocalDate date = (LocalDate) obj[0];
+                        // Handle both java.sql.Date and java.time.LocalDate
+                        Object dateObj = obj[0];
+                        LocalDate date;
+                        if (dateObj instanceof java.sql.Date) {
+                            date = ((java.sql.Date) dateObj).toLocalDate();
+                        } else if (dateObj instanceof LocalDate) {
+                            date = (LocalDate) dateObj;
+                        } else {
+                            log.warn("Unexpected date type: {}", dateObj.getClass().getName());
+                            return false;
+                        }
                         return date.equals(finalCurrentDate);
                     })
                     .map(obj -> ((Number) obj[1]).longValue())
