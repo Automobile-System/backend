@@ -22,6 +22,9 @@ public class Employee extends UserEntity {
     @Column(name= "specialty")
     private String specialty;
 
+    @Column(name="rating")
+    private Double EmpRating;
+
 
 
 }

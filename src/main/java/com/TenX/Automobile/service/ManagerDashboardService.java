@@ -140,9 +140,7 @@ public class ManagerDashboardService {
             .orElseThrow(() -> new RuntimeException("Employee not found"));
         
         // Map status string to enabled/disabled
-        boolean enabled = "Available".equalsIgnoreCase(request.getStatus()) || 
-                         "Unavailable".equalsIgnoreCase(request.getStatus()) ? 
-                         "Available".equalsIgnoreCase(request.getStatus()) : employee.isEnabled();
+        boolean enabled = "Available".equalsIgnoreCase(request.getStatus())? false  : true;
         
         employee.setEnabled(enabled);
         employeeRepository.save(employee);

@@ -48,6 +48,33 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
     Double calculateWeeklyTotalHours(@Param("employeeId") UUID employeeId);
 
     /**
+     * Calculate total hours for an employee in a date range
+     */
+    @Query("SELECT COALESCE(SUM(tl.hoursWorked), 0.0) FROM TimeLog tl " +
+           "WHERE tl.employee.id = :employeeId " +
+           "AND CAST(tl.startTime AS date) >= :startDate " +
+           "AND CAST(tl.startTime AS date) <= :endDate")
+    Double calculateTotalHoursByDateRange(
+        @Param("employeeId") UUID employeeId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Find time logs by employee and date range
+     */
+    @Query("SELECT tl FROM TimeLog tl " +
+           "WHERE tl.employee.id = :employeeId " +
+           "AND CAST(tl.startTime AS date) >= :startDate " +
+           "AND CAST(tl.startTime AS date) <= :endDate " +
+           "ORDER BY tl.startTime ASC")
+    List<TimeLog> findByEmployeeAndDateRange(
+        @Param("employeeId") UUID employeeId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
      * Delete all time logs for an employee
      */
     @Modifying
