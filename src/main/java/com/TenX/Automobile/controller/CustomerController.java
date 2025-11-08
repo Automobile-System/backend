@@ -1,18 +1,20 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
-import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
-import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
-import com.TenX.Automobile.dto.request.VehicleRequest;
-import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
-import com.TenX.Automobile.dto.response.CustomerRegistrationResponse;
-import com.TenX.Automobile.dto.response.ServiceDetailResponse;
-import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
-import com.TenX.Automobile.dto.response.ServiceListResponse;
-import com.TenX.Automobile.dto.response.VehicleResponse;
-import com.TenX.Automobile.entity.Customer;
+import com.TenX.Automobile.model.dto.profile.request.CustomerProfileUpdateRequest;
+import com.TenX.Automobile.model.dto.profile.response.CustomerProfileResponse;
+import com.TenX.Automobile.model.dto.request.CustomerRegistrationRequest;
+import com.TenX.Automobile.model.dto.request.VehicleRequest;
+import com.TenX.Automobile.model.dto.response.CustomerDashboardResponse;
+import com.TenX.Automobile.model.dto.response.CustomerRegistrationResponse;
+import com.TenX.Automobile.model.dto.response.ServiceDetailResponse;
+import com.TenX.Automobile.model.dto.response.ServiceFrequencyResponse;
+import com.TenX.Automobile.model.dto.response.ServiceListResponse;
+import com.TenX.Automobile.model.dto.response.VehicleResponse;
+import com.TenX.Automobile.model.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
 import com.TenX.Automobile.service.VehicleService;
+
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -295,6 +297,8 @@ public class CustomerController {
      * Get all services for authenticated customer
      * @param status Optional status filter (active, completed, upcoming)
      */
+    @Operation(summary = "Get all services for the authenticated customer with optional status filter",
+               description = "statuses: active (IN_PROGRESS, WAITING_PARTS), completed (COMPLETED), upcoming (SCHEDULED)")
     @GetMapping("/customer/services")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<?> getCustomerServices(

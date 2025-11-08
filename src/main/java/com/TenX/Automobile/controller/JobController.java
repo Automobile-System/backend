@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.TenX.Automobile.dto.request.JobRequest;
-import com.TenX.Automobile.dto.response.JobResponse;
+import com.TenX.Automobile.model.dto.request.JobRequest;
+import com.TenX.Automobile.model.dto.response.JobResponse;
 import com.TenX.Automobile.service.JobService;
 
 import jakarta.validation.Valid;

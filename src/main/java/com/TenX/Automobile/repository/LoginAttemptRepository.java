@@ -1,6 +1,6 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.LoginAttempt;
+import com.TenX.Automobile.model.entity.LoginAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

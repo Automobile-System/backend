@@ -1,9 +1,14 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.*;
-import com.TenX.Automobile.dto.response.*;
-import com.TenX.Automobile.entity.*;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.dto.request.CreateProjectRequest;
+import com.TenX.Automobile.model.dto.request.CreateTaskRequest;
+import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
+import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
+import com.TenX.Automobile.model.dto.response.*;
+import com.TenX.Automobile.model.dto.response.CompletionRatePercentageResponse.DataPoint;
+import com.TenX.Automobile.model.entity.*;
+import com.TenX.Automobile.model.enums.Role;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +18,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,13 +49,13 @@ public class ManagerDashboardService {
         // Count ongoing services (SERVICE type jobs not completed)
         List<Job> allJobs = jobRepository.findAll();
         Long ongoingServicesCount = allJobs.stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                     (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
             .count();
         
         // Count pending projects (PROJECT type jobs not completed)
         Long pendingProjectsCount = allJobs.stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+            .filter(j -> JobType.PROJECT.equals(j.getType()) &&
                     (j.getStatus() == null || (!"COMPLETED".equals(j.getStatus()) && !"CANCELLED".equals(j.getStatus()))))
             .count();
         
@@ -132,9 +140,7 @@ public class ManagerDashboardService {
             .orElseThrow(() -> new RuntimeException("Employee not found"));
         
         // Map status string to enabled/disabled
-        boolean enabled = "Available".equalsIgnoreCase(request.getStatus()) || 
-                         "Unavailable".equalsIgnoreCase(request.getStatus()) ? 
-                         "Available".equalsIgnoreCase(request.getStatus()) : employee.isEnabled();
+        boolean enabled = "Available".equalsIgnoreCase(request.getStatus())? false  : true;
         
         employee.setEnabled(enabled);
         employeeRepository.save(employee);
@@ -155,16 +161,16 @@ public class ManagerDashboardService {
             
             String serviceType = "Service";
             // Determine service type based on Job's type field
-            if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+            if (JobType.SERVICE.equals(job.getType())) {
                 // Look up service details
                 serviceRepository.findById(job.getTypeId()).ifPresent(service -> {
                     // Use lambda-compatible approach - can't reassign serviceType directly
                 });
                 // Get service title from repository
                 serviceType = serviceRepository.findById(job.getTypeId())
-                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .map(com.TenX.Automobile.model.entity.Service::getTitle)
                     .orElse("Service");
-            } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+            } else if (JobType.PROJECT.equals(job.getType())) {
                 // Get project title from repository
                 serviceType = projectRepository.findById(job.getTypeId())
                     .map(Project::getTitle)
@@ -225,7 +231,7 @@ public class ManagerDashboardService {
             });
         
         // Create service
-        com.TenX.Automobile.entity.Service service = new com.TenX.Automobile.entity.Service();
+        com.TenX.Automobile.model.entity.Service service = new com.TenX.Automobile.model.entity.Service();
         service.setTitle(request.getServiceType());
         service.setDescription(request.getServiceNotes());
         service.setEstimatedHours(request.getEstimatedDurationHours());
@@ -355,7 +361,7 @@ public class ManagerDashboardService {
                     Long jobId = null;
                     
                     // Find the Job associated with this project to get customer info
-                    Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, p.getProjectId());
+                    Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, p.getProjectId());
                     if (jobOpt.isPresent()) {
                         Job job = jobOpt.get();
                         jobId = job.getJobId();
@@ -447,11 +453,11 @@ public class ManagerDashboardService {
                     Job job = assignment.getJob();
                     
                     // Determine task type based on Job's type field
-                    if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                    if (JobType.SERVICE.equals(job.getType())) {
                         taskType = serviceRepository.findById(job.getTypeId())
-                            .map(com.TenX.Automobile.entity.Service::getTitle)
+                            .map(com.TenX.Automobile.model.entity.Service::getTitle)
                             .orElse("Service");
-                    } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                    } else if (JobType.PROJECT.equals(job.getType())) {
                         taskType = projectRepository.findById(job.getTypeId())
                             .map(Project::getTitle)
                             .orElse("Project");
@@ -593,6 +599,64 @@ public class ManagerDashboardService {
             .dataList(dataPoints)
             .type("DonutChart")
             .build();
+    }
+
+    public CompletionRatePercentageResponse getCompletionRateTrendReport() {
+        log.info("Generating completion rate trend report...");
+
+        // Fetch only completed jobs
+        List<Job> completedJobs = jobRepository.findByStatus("COMPLETED");
+
+        if (completedJobs.isEmpty()) {
+            log.info("No completed jobs found for report generation.");
+            return CompletionRatePercentageResponse.builder()
+                    .chartType("line")
+                    .title("Completion Rate Percentage Over Time")
+                    .data(new DataPoint[0])
+                    .build();
+        }
+
+        //  Group completed jobs by completion month
+        Map<YearMonth, List<Job>> jobsByMonth = completedJobs.stream()
+                .filter(job -> job.getCompletionDate() != null)
+                .collect(Collectors.groupingBy(
+                        job -> YearMonth.from(job.getCompletionDate()),
+                        TreeMap::new,
+                        Collectors.toList()
+                ));
+
+        List<DataPoint> dataPoints = new ArrayList<>();
+
+        for (Map.Entry<YearMonth, List<Job>> entry : jobsByMonth.entrySet()) {
+            YearMonth ym = entry.getKey();
+            List<Job> monthlyCompletedJobs = entry.getValue();
+
+            int completedTasks = monthlyCompletedJobs.size();
+
+            // ✅ Fetch total jobs (any status) for that month to calculate rate
+            int totalTasks = (int) jobRepository.findAll().stream()
+                    .filter(job -> job.getCompletionDate() != null)
+                    .filter(job -> YearMonth.from(job.getCompletionDate()).equals(ym))
+                    .count();
+
+            double rate = totalTasks > 0 ? (completedTasks * 100.0 / totalTasks) : 0.0;
+
+            String monthLabel = ym.getMonth()
+                    .getDisplayName(TextStyle.SHORT, Locale.ENGLISH) + " " + ym.getYear();
+
+            dataPoints.add(DataPoint.builder()
+                    .month(monthLabel)
+                    .rate(rate)
+                    .completedTasks(completedTasks)
+                    .totalTasks(totalTasks)
+                    .build());
+        }
+
+        return CompletionRatePercentageResponse.builder()
+                .chartType("line")
+                .title("Completion Rate Percentage Over Time")
+                .data(dataPoints.toArray(new DataPoint[0]))
+                .build();
     }
 }
 

@@ -1,6 +1,6 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.Admin;
+import com.TenX.Automobile.model.entity.Admin;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

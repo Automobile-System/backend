@@ -5,8 +5,8 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import com.TenX.Automobile.entity.Project;
-import com.TenX.Automobile.entity.Task;
+import com.TenX.Automobile.model.entity.Project;
+import com.TenX.Automobile.model.entity.Task;
 import com.TenX.Automobile.repository.ProjectRepository;
 
 import jakarta.transaction.Transactional;

@@ -1,6 +1,6 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.entity.ManageAssignJob;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
 import com.TenX.Automobile.service.ManageAssignJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

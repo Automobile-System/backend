@@ -1,10 +1,12 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.SendMessageRequest;
-import com.TenX.Automobile.dto.response.ConversationResponse;
-import com.TenX.Automobile.dto.response.MessageResponse;
-import com.TenX.Automobile.entity.*;
+import com.TenX.Automobile.model.dto.request.SendMessageRequest;
+import com.TenX.Automobile.model.dto.response.ConversationResponse;
+import com.TenX.Automobile.model.dto.response.MessageResponse;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
+import com.TenX.Automobile.model.entity.Conversation;
+import com.TenX.Automobile.model.entity.Message;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

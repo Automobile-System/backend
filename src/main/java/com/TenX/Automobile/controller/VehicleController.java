@@ -1,7 +1,7 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.VehicleRequest;
-import com.TenX.Automobile.dto.response.VehicleResponse;
+import com.TenX.Automobile.model.dto.request.VehicleRequest;
+import com.TenX.Automobile.model.dto.response.VehicleResponse;
 import com.TenX.Automobile.service.VehicleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

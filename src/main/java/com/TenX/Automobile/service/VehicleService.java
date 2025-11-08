@@ -1,9 +1,9 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.VehicleRequest;
-import com.TenX.Automobile.dto.response.VehicleResponse;
-import com.TenX.Automobile.entity.Vehicle;
-import com.TenX.Automobile.entity.Customer;
+import com.TenX.Automobile.model.dto.request.VehicleRequest;
+import com.TenX.Automobile.model.dto.response.VehicleResponse;
+import com.TenX.Automobile.model.entity.Vehicle;
+import com.TenX.Automobile.model.entity.Customer;
 import com.TenX.Automobile.exception.DuplicateResourceException;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
 import com.TenX.Automobile.repository.VehicleRepository;

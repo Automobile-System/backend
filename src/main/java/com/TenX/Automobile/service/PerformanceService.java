@@ -1,9 +1,10 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.response.ChartsDataResponse;
-import com.TenX.Automobile.dto.response.DemandMeterResponse;
-import com.TenX.Automobile.dto.response.MonthlyEarningsResponse;
-import com.TenX.Automobile.entity.*;
+import com.TenX.Automobile.model.dto.response.ChartsDataResponse;
+import com.TenX.Automobile.model.dto.response.DemandMeterResponse;
+import com.TenX.Automobile.model.dto.response.MonthlyEarningsResponse;
+import com.TenX.Automobile.model.entity.*;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -278,15 +279,15 @@ public class PerformanceService {
             Job job = assignment.getJob();
             String serviceType = "General Service";
             
-            if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+            if (JobType.PROJECT.equals(job.getType())) {
                 // Look up project title
                 serviceType = projectRepository.findById(job.getTypeId())
                     .map(Project::getTitle)
                     .orElse("General Project");
-            } else if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+            } else if (JobType.SERVICE.equals(job.getType())) {
                 // Look up service title
                 serviceType = serviceRepository.findById(job.getTypeId())
-                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .map(com.TenX.Automobile.model.entity.Service::getTitle)
                     .orElse("General Service");
             }
             

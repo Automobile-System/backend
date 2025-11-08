@@ -5,11 +5,11 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.TenX.Automobile.dto.request.JobRequest;
-import com.TenX.Automobile.dto.response.JobResponse;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.Vehicle;
-import com.TenX.Automobile.enums.JobType;
+import com.TenX.Automobile.model.dto.request.JobRequest;
+import com.TenX.Automobile.model.dto.response.JobResponse;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.Vehicle;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ProjectRepository;
 import com.TenX.Automobile.repository.ServiceRepository;

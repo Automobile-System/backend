@@ -1,18 +1,18 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.profile.request.CustomerProfileUpdateRequest;
-import com.TenX.Automobile.dto.profile.response.CustomerProfileResponse;
-import com.TenX.Automobile.dto.request.CustomerRegistrationRequest;
-import com.TenX.Automobile.dto.response.CustomerDashboardResponse;
-import com.TenX.Automobile.dto.response.ServiceDetailResponse;
-import com.TenX.Automobile.dto.response.ServiceFrequencyResponse;
-import com.TenX.Automobile.dto.response.ServiceListResponse;
-import com.TenX.Automobile.entity.Customer;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.TimeLog;
-import com.TenX.Automobile.entity.Vehicle;
-import com.TenX.Automobile.enums.JobType;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.dto.profile.request.CustomerProfileUpdateRequest;
+import com.TenX.Automobile.model.dto.profile.response.CustomerProfileResponse;
+import com.TenX.Automobile.model.dto.request.CustomerRegistrationRequest;
+import com.TenX.Automobile.model.dto.response.CustomerDashboardResponse;
+import com.TenX.Automobile.model.dto.response.ServiceDetailResponse;
+import com.TenX.Automobile.model.dto.response.ServiceFrequencyResponse;
+import com.TenX.Automobile.model.dto.response.ServiceListResponse;
+import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.TimeLog;
+import com.TenX.Automobile.model.entity.Vehicle;
+import com.TenX.Automobile.model.enums.JobType;
+import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.repository.CustomerRepository;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
@@ -257,35 +257,35 @@ public class CustomerService {
         
         // Count active services (SERVICE type jobs not completed)
         Long activeServices = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                         (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
                 .count();
         
         // Count completed services
         Long completedServices = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                         "COMPLETED".equals(j.getStatus()))
                 .count();
         
         // Count active projects (PROJECT type jobs not completed)
         Long activeProjects = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                .filter(j -> JobType.PROJECT.equals(j.getType()) &&
                         (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
                 .count();
         
         // Count completed projects
         Long completedProjects = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                .filter(j -> JobType.PROJECT.equals(j.getType()) &&
                         "COMPLETED".equals(j.getStatus()))
                 .count();
         
         // Count upcoming appointments (arriving date > end of today)
         Long upcomingServiceAppointments = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                         j.getArrivingDate() != null && j.getArrivingDate().isAfter(endOfToday))
                 .count();
         Long upcomingProjectAppointments = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+                .filter(j -> JobType.PROJECT.equals(j.getType()) &&
                         j.getArrivingDate() != null && j.getArrivingDate().isAfter(endOfToday))
                 .count();
         Long upcomingAppointments = upcomingServiceAppointments + upcomingProjectAppointments;
@@ -293,11 +293,11 @@ public class CustomerService {
         log.info("Dashboard overview fetched successfully for customer: {}", email);
         
         return CustomerDashboardResponse.builder()
-                .activeServices(activeServices != null ? activeServices : 0L)
-                .completedServices(completedServices != null ? completedServices : 0L)
-                .activeProjects(activeProjects != null ? activeProjects : 0L)
-                .completedProjects(completedProjects != null ? completedProjects : 0L)
-                .upcomingAppointments(upcomingAppointments != null ? upcomingAppointments : 0L)
+                .activeServices(activeServices)
+                .completedServices(completedServices)
+                .activeProjects(activeProjects)
+                .completedProjects(completedProjects)
+                .upcomingAppointments(upcomingAppointments)
                 .build();
     }
 
@@ -433,7 +433,7 @@ public class CustomerService {
                 .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
 
         // Find the service entity
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(serviceId)
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
 
         // Find the job for this service and customer
@@ -452,7 +452,7 @@ public class CustomerService {
 
     private ServiceListResponse mapToServiceListResponse(Job job) {
         // Lookup the service entity
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(job.getTypeId())
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(job.getTypeId())
                 .orElse(null);
 
         if (service == null) {
@@ -477,7 +477,7 @@ public class CustomerService {
                 .build();
     }
 
-    private ServiceDetailResponse mapToServiceDetailResponse(com.TenX.Automobile.entity.Service service, Job job, List<TimeLog> timeLogs) {
+    private ServiceDetailResponse mapToServiceDetailResponse(com.TenX.Automobile.model.entity.Service service, Job job, List<TimeLog> timeLogs) {
         // Get vehicle information
         Vehicle vehicle = job.getVehicle();
         ServiceDetailResponse.VehicleInfo vehicleInfo = null;

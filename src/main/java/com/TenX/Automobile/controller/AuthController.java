@@ -1,6 +1,6 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.auth.*;
+import com.TenX.Automobile.model.dto.auth.*;
 import com.TenX.Automobile.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
