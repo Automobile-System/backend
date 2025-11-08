@@ -1,14 +1,14 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.ManualTimeLogRequest;
-import com.TenX.Automobile.dto.response.TimeLogResponse;
-import com.TenX.Automobile.dto.response.WeeklyTotalHoursResponse;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.ManageAssignJob;
-import com.TenX.Automobile.entity.Project;
-import com.TenX.Automobile.entity.Task;
-import com.TenX.Automobile.entity.TimeLog;
-import com.TenX.Automobile.enums.JobType;
+import com.TenX.Automobile.model.dto.request.ManualTimeLogRequest;
+import com.TenX.Automobile.model.dto.response.TimeLogResponse;
+import com.TenX.Automobile.model.dto.response.WeeklyTotalHoursResponse;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
+import com.TenX.Automobile.model.entity.Project;
+import com.TenX.Automobile.model.entity.Task;
+import com.TenX.Automobile.model.entity.TimeLog;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ManageAssignJobRepository;

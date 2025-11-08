@@ -1,9 +1,13 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.*;
-import com.TenX.Automobile.dto.response.*;
-import com.TenX.Automobile.entity.*;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.dto.request.CreateProjectRequest;
+import com.TenX.Automobile.model.dto.request.CreateTaskRequest;
+import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
+import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
+import com.TenX.Automobile.model.dto.response.*;
+import com.TenX.Automobile.model.entity.*;
+import com.TenX.Automobile.model.enums.Role;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -41,13 +45,13 @@ public class ManagerDashboardService {
         // Count ongoing services (SERVICE type jobs not completed)
         List<Job> allJobs = jobRepository.findAll();
         Long ongoingServicesCount = allJobs.stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                     (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())))
             .count();
         
         // Count pending projects (PROJECT type jobs not completed)
         Long pendingProjectsCount = allJobs.stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()) &&
+            .filter(j -> JobType.PROJECT.equals(j.getType()) &&
                     (j.getStatus() == null || (!"COMPLETED".equals(j.getStatus()) && !"CANCELLED".equals(j.getStatus()))))
             .count();
         
@@ -155,16 +159,16 @@ public class ManagerDashboardService {
             
             String serviceType = "Service";
             // Determine service type based on Job's type field
-            if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+            if (JobType.SERVICE.equals(job.getType())) {
                 // Look up service details
                 serviceRepository.findById(job.getTypeId()).ifPresent(service -> {
                     // Use lambda-compatible approach - can't reassign serviceType directly
                 });
                 // Get service title from repository
                 serviceType = serviceRepository.findById(job.getTypeId())
-                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .map(com.TenX.Automobile.model.entity.Service::getTitle)
                     .orElse("Service");
-            } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+            } else if (JobType.PROJECT.equals(job.getType())) {
                 // Get project title from repository
                 serviceType = projectRepository.findById(job.getTypeId())
                     .map(Project::getTitle)
@@ -225,7 +229,7 @@ public class ManagerDashboardService {
             });
         
         // Create service
-        com.TenX.Automobile.entity.Service service = new com.TenX.Automobile.entity.Service();
+        com.TenX.Automobile.model.entity.Service service = new com.TenX.Automobile.model.entity.Service();
         service.setTitle(request.getServiceType());
         service.setDescription(request.getServiceNotes());
         service.setEstimatedHours(request.getEstimatedDurationHours());
@@ -355,7 +359,7 @@ public class ManagerDashboardService {
                     Long jobId = null;
                     
                     // Find the Job associated with this project to get customer info
-                    Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, p.getProjectId());
+                    Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, p.getProjectId());
                     if (jobOpt.isPresent()) {
                         Job job = jobOpt.get();
                         jobId = job.getJobId();
@@ -447,11 +451,11 @@ public class ManagerDashboardService {
                     Job job = assignment.getJob();
                     
                     // Determine task type based on Job's type field
-                    if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                    if (JobType.SERVICE.equals(job.getType())) {
                         taskType = serviceRepository.findById(job.getTypeId())
-                            .map(com.TenX.Automobile.entity.Service::getTitle)
+                            .map(com.TenX.Automobile.model.entity.Service::getTitle)
                             .orElse("Service");
-                    } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                    } else if (JobType.PROJECT.equals(job.getType())) {
                         taskType = projectRepository.findById(job.getTypeId())
                             .map(Project::getTitle)
                             .orElse("Project");

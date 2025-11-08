@@ -8,16 +8,17 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.TenX.Automobile.model.enums.JobType;
 import org.springframework.stereotype.Service;
 
-import com.TenX.Automobile.dto.response.AssignedTaskResponse;
-import com.TenX.Automobile.dto.response.CalendarEventResponse;
-import com.TenX.Automobile.dto.response.DashboardSummaryResponse;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.Project;
-import com.TenX.Automobile.entity.Task;
-import com.TenX.Automobile.entity.TimeLog;
-import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.model.dto.response.AssignedTaskResponse;
+import com.TenX.Automobile.model.dto.response.CalendarEventResponse;
+import com.TenX.Automobile.model.dto.response.DashboardSummaryResponse;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.Project;
+import com.TenX.Automobile.model.entity.Task;
+import com.TenX.Automobile.model.entity.TimeLog;
+import com.TenX.Automobile.model.entity.Vehicle;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ProjectRepository;
 import com.TenX.Automobile.repository.TaskRepository;
@@ -115,7 +116,7 @@ public class TaskService {
         // Start timer in TimeLog
         if (task.getProject() != null) {
             // Find the Job associated with this project
-            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, task.getProject().getProjectId());
             
             if (jobOpt.isPresent()) {
                 Job job = jobOpt.get();
@@ -181,7 +182,7 @@ public class TaskService {
         // Pause timer in TimeLog
         if (task.getProject() != null) {
             // Find the Job associated with this project
-            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, task.getProject().getProjectId());
             
             if (jobOpt.isPresent()) {
                 Long jobId = jobOpt.get().getJobId();
@@ -228,7 +229,7 @@ public class TaskService {
         // Resume timer in TimeLog
         if (task.getProject() != null) {
             // Find the Job associated with this project
-            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, task.getProject().getProjectId());
             
             if (jobOpt.isPresent()) {
                 Job job = jobOpt.get();
@@ -283,7 +284,7 @@ public class TaskService {
         // Stop timer in TimeLog
         if (task.getProject() != null) {
             // Find the Job associated with this project
-            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
+            Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, task.getProject().getProjectId());
             
             if (jobOpt.isPresent()) {
                 Job job = jobOpt.get();
@@ -375,7 +376,7 @@ public class TaskService {
         LocalDateTime deadline = null;
         
         // Find the Job associated with this project to get vehicle and deadline
-        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId());
+        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId());
         if (jobOpt.isPresent()) {
             Job job = jobOpt.get();
             Vehicle vehicle = job.getVehicle();
@@ -425,7 +426,7 @@ public class TaskService {
         LocalDateTime endTime = null;
         
         // Find the Job associated with this project to get vehicle and times
-        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId());
+        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId());
         if (jobOpt.isPresent()) {
             Job job = jobOpt.get();
             Vehicle vehicle = job.getVehicle();
@@ -457,7 +458,7 @@ public class TaskService {
         }
         
         // Find the Job associated with this project
-        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, task.getProject().getProjectId());
+        Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, task.getProject().getProjectId());
         if (jobOpt.isPresent()) {
             Long jobId = jobOpt.get().getJobId();
             Optional<TimeLog> timeLogOpt = timeLogRepository.findByJob_JobId(jobId);

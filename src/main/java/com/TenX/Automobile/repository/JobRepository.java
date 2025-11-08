@@ -5,8 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.enums.JobType;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.enums.JobType;
 
 import java.time.LocalDateTime;
 import java.util.List;

@@ -1,10 +1,11 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.PauseTaskRequest;
-import com.TenX.Automobile.dto.response.AssignedTaskResponse;
-import com.TenX.Automobile.dto.response.CalendarEventResponse;
-import com.TenX.Automobile.dto.response.DashboardSummaryResponse;
-import com.TenX.Automobile.entity.Task;
+import com.TenX.Automobile.model.dto.request.PauseTaskRequest;
+import com.TenX.Automobile.model.dto.response.AssignedTaskResponse;
+import com.TenX.Automobile.model.dto.response.CalendarEventResponse;
+import com.TenX.Automobile.model.dto.response.DashboardSummaryResponse;
+import com.TenX.Automobile.model.entity.Task;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -203,8 +204,8 @@ public class TaskManagementController {
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof com.TenX.Automobile.entity.UserEntity) {
-            return ((com.TenX.Automobile.entity.UserEntity) principal).getId();
+        if (principal instanceof UserEntity) {
+            return ((UserEntity) principal).getId();
         }
 
         throw new IllegalStateException("Unexpected authentication principal type: " + principal.getClass().getName());

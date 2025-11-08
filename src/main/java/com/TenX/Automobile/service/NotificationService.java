@@ -1,8 +1,9 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.entity.*;
-import com.TenX.Automobile.enums.NotificationType;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.entity.*;
+import com.TenX.Automobile.model.enums.JobType;
+import com.TenX.Automobile.model.enums.NotificationType;
+import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -143,7 +144,7 @@ public class NotificationService {
         // Find the job for this project
         Long jobId = null;
         if (project != null) {
-            jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+            jobId = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
                     .map(Job::getJobId)
                     .orElse(null);
         }
@@ -181,7 +182,7 @@ public class NotificationService {
         // Find the job for this project
         Long jobId = null;
         if (project != null) {
-            jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+            jobId = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
                     .map(Job::getJobId)
                     .orElse(null);
         }
@@ -215,7 +216,7 @@ public class NotificationService {
         // Find the job for this project
         Long jobId = null;
         if (project != null) {
-            jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+            jobId = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
                     .map(Job::getJobId)
                     .orElse(null);
         }
@@ -245,7 +246,7 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         
         // Find the job associated with this project
-        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+        Long jobId = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
                 .map(Job::getJobId)
                 .orElse(null);
         
@@ -268,11 +269,11 @@ public class NotificationService {
      */
     @Transactional
     public void notifyServiceStatusChange(Long serviceId, UUID customerId, String newStatus) {
-        com.TenX.Automobile.entity.Service serviceEntity = serviceRepository.findById(serviceId)
+        com.TenX.Automobile.model.entity.Service serviceEntity = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
         
         // Find the job associated with this service
-        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.SERVICE, serviceEntity.getServiceId())
+        Long jobId = jobRepository.findByTypeAndTypeId(JobType.SERVICE, serviceEntity.getServiceId())
                 .map(Job::getJobId)
                 .orElse(null);
         
@@ -299,7 +300,7 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         
         // Find the job associated with this project
-        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+        Long jobId = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
                 .map(Job::getJobId)
                 .orElse(null);
         
@@ -330,7 +331,7 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         
         // Find the job associated with this project
-        Long jobId = jobRepository.findByTypeAndTypeId(com.TenX.Automobile.enums.JobType.PROJECT, project.getProjectId())
+        Long jobId = jobRepository.findByTypeAndTypeId(JobType.PROJECT, project.getProjectId())
                 .map(Job::getJobId)
                 .orElse(null);
         

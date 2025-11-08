@@ -1,11 +1,11 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.EmployeeRegistrationRequest;
-import com.TenX.Automobile.dto.request.UpdateEmployeeProfileRequest;
-import com.TenX.Automobile.dto.response.EmployeeProfileResponse;
-import com.TenX.Automobile.dto.response.EmployeeResponse;
-import com.TenX.Automobile.entity.Employee;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.dto.request.EmployeeRegistrationRequest;
+import com.TenX.Automobile.model.dto.request.UpdateEmployeeProfileRequest;
+import com.TenX.Automobile.model.dto.response.EmployeeProfileResponse;
+import com.TenX.Automobile.model.dto.response.EmployeeResponse;
+import com.TenX.Automobile.model.entity.Employee;
+import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.repository.EmployeeRepository;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
 import jakarta.transaction.Transactional;

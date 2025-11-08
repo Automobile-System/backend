@@ -1,6 +1,6 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.entity.Payment;
+import com.TenX.Automobile.model.entity.Payment;
 import com.TenX.Automobile.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

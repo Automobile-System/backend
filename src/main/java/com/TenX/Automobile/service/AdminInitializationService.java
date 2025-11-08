@@ -1,7 +1,7 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.entity.Admin;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.entity.Admin;
+import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.repository.AdminRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;

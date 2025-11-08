@@ -1,6 +1,6 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.entity.TimeLog;
+import com.TenX.Automobile.model.entity.TimeLog;
 import com.TenX.Automobile.service.TimeLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

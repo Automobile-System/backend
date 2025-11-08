@@ -1,6 +1,6 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.response.EmployeeResponse;
+import com.TenX.Automobile.model.dto.response.EmployeeResponse;
 import com.TenX.Automobile.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

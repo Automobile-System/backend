@@ -1,8 +1,8 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.EmployeeRegistrationRequest;
-import com.TenX.Automobile.dto.response.EmployeeRegistrationResponse;
-import com.TenX.Automobile.entity.Employee;
+import com.TenX.Automobile.model.dto.request.EmployeeRegistrationRequest;
+import com.TenX.Automobile.model.dto.response.EmployeeRegistrationResponse;
+import com.TenX.Automobile.model.entity.Employee;
 import com.TenX.Automobile.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

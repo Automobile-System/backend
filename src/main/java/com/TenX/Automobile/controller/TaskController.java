@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.TenX.Automobile.entity.Task;
+import com.TenX.Automobile.model.entity.Task;
 import com.TenX.Automobile.service.TaskService;
 
 import jakarta.validation.Valid;

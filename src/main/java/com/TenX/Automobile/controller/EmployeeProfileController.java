@@ -1,10 +1,10 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.UpdateEmployeeProfileRequest;
-import com.TenX.Automobile.dto.response.EmployeeNotificationResponse;
-import com.TenX.Automobile.dto.response.EmployeeProfileResponse;
-import com.TenX.Automobile.entity.Notification;
-import com.TenX.Automobile.entity.UserEntity;
+import com.TenX.Automobile.model.dto.request.UpdateEmployeeProfileRequest;
+import com.TenX.Automobile.model.dto.response.EmployeeNotificationResponse;
+import com.TenX.Automobile.model.dto.response.EmployeeProfileResponse;
+import com.TenX.Automobile.model.entity.Notification;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.service.EmployeeService;
 import com.TenX.Automobile.service.NotificationService;
 import jakarta.validation.Valid;

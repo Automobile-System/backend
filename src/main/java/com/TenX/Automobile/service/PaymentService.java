@@ -1,7 +1,7 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.entity.Payment;
-import com.TenX.Automobile.entity.Job;
+import com.TenX.Automobile.model.entity.Payment;
+import com.TenX.Automobile.model.entity.Job;
 import com.TenX.Automobile.repository.PaymentRepository;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.exception.ResourceNotFoundException;

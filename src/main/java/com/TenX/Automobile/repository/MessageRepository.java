@@ -1,7 +1,7 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.Message;
-import com.TenX.Automobile.entity.UserEntity;
+import com.TenX.Automobile.model.entity.Message;
+import com.TenX.Automobile.model.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

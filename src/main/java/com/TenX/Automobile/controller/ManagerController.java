@@ -1,7 +1,10 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.*;
-import com.TenX.Automobile.dto.response.*;
+import com.TenX.Automobile.model.dto.request.CreateProjectRequest;
+import com.TenX.Automobile.model.dto.request.CreateTaskRequest;
+import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
+import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
+import com.TenX.Automobile.model.dto.response.*;
 import com.TenX.Automobile.service.ManagerDashboardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

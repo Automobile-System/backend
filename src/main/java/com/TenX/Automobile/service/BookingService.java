@@ -1,11 +1,11 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.ServiceBookingRequest;
-import com.TenX.Automobile.dto.response.AvailableSlotResponse;
-import com.TenX.Automobile.dto.response.ServiceBookingResponse;
-import com.TenX.Automobile.entity.Customer;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.model.dto.request.ServiceBookingRequest;
+import com.TenX.Automobile.model.dto.response.AvailableSlotResponse;
+import com.TenX.Automobile.model.dto.response.ServiceBookingResponse;
+import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.Vehicle;
 import com.TenX.Automobile.repository.CustomerRepository;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
@@ -160,7 +160,7 @@ public class BookingService {
         }
 
         // Find the service template
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(request.getServiceId())
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found with ID: " + request.getServiceId()));
 
         // Find and validate vehicle belongs to customer
