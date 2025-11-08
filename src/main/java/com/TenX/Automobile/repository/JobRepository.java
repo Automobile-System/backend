@@ -34,6 +34,10 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @Query("SELECT j FROM Job j WHERE j.vehicle.v_Id = :vehicleId AND j.status = :status")
     List<Job> findByVehicleIdAndStatus(@Param("vehicleId") UUID vehicleId, @Param("status") String status);
 
+
+    @Query("SELECT j FROM Job j WHERE j.status = :status")
+    List<Job> findByStatus(@Param("status") String status);
+    
     // Count jobs by date
     @Query("SELECT COUNT(j) FROM Job j WHERE DATE(j.arrivingDate) = DATE(:date)")
     Long countJobsByDate(@Param("date") LocalDateTime date);

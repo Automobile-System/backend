@@ -47,8 +47,14 @@ public class EmployeeService {
                 .phoneNumber(employeeRegistrationRequest.getPhoneNumber())
                 .specialty(speciality)
                 .build();
-
-        employee.addRole(Role.STAFF);
+                
+        if(employeeRegistrationRequest.getEmployeeType() != null){
+            switch (employeeRegistrationRequest.getEmployeeType()){
+                case MANAGER -> employee.addRole(Role.MANAGER);
+                case STAFF -> employee.addRole(Role.STAFF);
+                default -> employee.addRole(Role.STAFF);
+            }
+        }
 
         System.out.print("Saving Employee : "+employee);
         Employee savedEmployee = employeeRepository.save(employee);

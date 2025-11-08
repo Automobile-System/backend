@@ -33,7 +33,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('MANAGER')")
+@PreAuthorize("hasRole('MANAGER') AND isAuthenticated()")
 public class ManagerController {
 
     private final ManagerDashboardService managerDashboardService;
@@ -151,5 +151,11 @@ public class ManagerController {
     public ResponseEntity<ReportsResponse> getCompletedProjectsByTypeReport() {
         log.info("Getting completed projects by type report");
         return ResponseEntity.ok(managerDashboardService.getCompletedProjectsByTypeReport());
+    }
+
+    @GetMapping("reports/completion-rate-trend")
+    public ResponseEntity<CompletionRatePercentageResponse> getCompletionRateTrendReport() {
+        log.info("Getting completion rate trend report");
+        return ResponseEntity.ok(managerDashboardService.getCompletionRateTrendReport());
     }
 }

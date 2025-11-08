@@ -14,13 +14,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AddEmployeeRequest {
-    @NotBlank
+    @NotBlank(message = "First name is required")
     private String firstName;
 
-    @NotBlank
+    @NotBlank(message = "Last name is required")
     private String lastName;
 
-    @NotBlank
+    @NotBlank(message = "Email is required")
     @Email
     private String email;
 
@@ -32,19 +32,19 @@ public class AddEmployeeRequest {
     @Pattern(regexp = "^EMP-\\d{3}$", message = "Employee ID must be in format EMP-XXX")
     private String employeeId;
 
-    @NotBlank
+    @NotBlank(message = "Specialization is required")
     private String specialization;  // See specialization list in documentation
 
-    @NotBlank
+    @NotBlank(message = "Join date is required")
     private String joinDate;  // ISO date string
 
-    @NotBlank
+    @NotBlank(message = "Salary is required")
     private String salary;
 
-    @NotBlank
+    @NotBlank(message = "Username is required")
     private String username;
 
-    @NotBlank
+    @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 

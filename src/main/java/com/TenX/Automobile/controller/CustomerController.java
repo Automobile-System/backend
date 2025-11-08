@@ -13,6 +13,8 @@ import com.TenX.Automobile.model.dto.response.VehicleResponse;
 import com.TenX.Automobile.model.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
 import com.TenX.Automobile.service.VehicleService;
+
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -295,6 +297,8 @@ public class CustomerController {
      * Get all services for authenticated customer
      * @param status Optional status filter (active, completed, upcoming)
      */
+    @Operation(summary = "Get all services for the authenticated customer with optional status filter",
+               description = "statuses: active (IN_PROGRESS, WAITING_PARTS), completed (COMPLETED), upcoming (SCHEDULED)")
     @GetMapping("/customer/services")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<?> getCustomerServices(

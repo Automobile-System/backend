@@ -5,6 +5,7 @@ import com.TenX.Automobile.model.dto.request.CreateTaskRequest;
 import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
 import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
 import com.TenX.Automobile.model.dto.response.*;
+import com.TenX.Automobile.model.dto.response.CompletionRatePercentageResponse.DataPoint;
 import com.TenX.Automobile.model.entity.*;
 import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.model.enums.JobType;
@@ -17,7 +18,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Year;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -597,6 +601,64 @@ public class ManagerDashboardService {
             .dataList(dataPoints)
             .type("DonutChart")
             .build();
+    }
+
+    public CompletionRatePercentageResponse getCompletionRateTrendReport() {
+        log.info("Generating completion rate trend report...");
+
+        // Fetch only completed jobs
+        List<Job> completedJobs = jobRepository.findByStatus("COMPLETED");
+
+        if (completedJobs.isEmpty()) {
+            log.info("No completed jobs found for report generation.");
+            return CompletionRatePercentageResponse.builder()
+                    .chartType("line")
+                    .title("Completion Rate Percentage Over Time")
+                    .data(new DataPoint[0])
+                    .build();
+        }
+
+        //  Group completed jobs by completion month
+        Map<YearMonth, List<Job>> jobsByMonth = completedJobs.stream()
+                .filter(job -> job.getCompletionDate() != null)
+                .collect(Collectors.groupingBy(
+                        job -> YearMonth.from(job.getCompletionDate()),
+                        TreeMap::new,
+                        Collectors.toList()
+                ));
+
+        List<DataPoint> dataPoints = new ArrayList<>();
+
+        for (Map.Entry<YearMonth, List<Job>> entry : jobsByMonth.entrySet()) {
+            YearMonth ym = entry.getKey();
+            List<Job> monthlyCompletedJobs = entry.getValue();
+
+            int completedTasks = monthlyCompletedJobs.size();
+
+            // ✅ Fetch total jobs (any status) for that month to calculate rate
+            int totalTasks = (int) jobRepository.findAll().stream()
+                    .filter(job -> job.getCompletionDate() != null)
+                    .filter(job -> YearMonth.from(job.getCompletionDate()).equals(ym))
+                    .count();
+
+            double rate = totalTasks > 0 ? (completedTasks * 100.0 / totalTasks) : 0.0;
+
+            String monthLabel = ym.getMonth()
+                    .getDisplayName(TextStyle.SHORT, Locale.ENGLISH) + " " + ym.getYear();
+
+            dataPoints.add(DataPoint.builder()
+                    .month(monthLabel)
+                    .rate(rate)
+                    .completedTasks(completedTasks)
+                    .totalTasks(totalTasks)
+                    .build());
+        }
+
+        return CompletionRatePercentageResponse.builder()
+                .chartType("line")
+                .title("Completion Rate Percentage Over Time")
+                .data(dataPoints.toArray(new DataPoint[0]))
+                .build();
     }
 }
 

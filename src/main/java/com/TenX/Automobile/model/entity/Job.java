@@ -56,6 +56,9 @@ public class Job {
     @Column(name = "arriving_date")
     private LocalDateTime arrivingDate;
 
+    @Column(name = "completion_date")
+    private LocalDateTime completionDate;
+
     @Column(name = "cost")
     private BigDecimal cost;
 
