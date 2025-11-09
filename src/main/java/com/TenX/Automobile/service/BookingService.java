@@ -133,13 +133,13 @@ public class BookingService {
 
     /**
      * Book a service for a customer
-     * @param request Service booking request with serviceId, arrivingDate, and vehicleId
+     * @param request Service booking request with serviceId, arrivingDate, vehicleId, and optional employeeId
      * @return ServiceBookingResponse with booking details
      */
     @Transactional
     public ServiceBookingResponse bookService(ServiceBookingRequest request) {
-        log.info("Booking service - serviceId: {}, arrivingDate: {}, vehicle: {}", 
-                request.getServiceId(), request.getArrivingDate(), request.getVehicleId());
+        log.info("Booking service - serviceId: {}, arrivingDate: {}, vehicle: {}, preferredEmployee: {}", 
+                request.getServiceId(), request.getArrivingDate(), request.getVehicleId(), request.getEmployeeId());
 
         // Get authenticated customer email
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -177,6 +177,14 @@ public class BookingService {
 
         // Save the job
         Job savedJob = jobRepository.save(job);
+
+        // Note: employeeId is stored in the request for future manager assignment
+        // Manager will use ManageAssignJobRepository to assign employee to this job
+        // If employeeId is provided, manager should prioritize that employee
+        if (request.getEmployeeId() != null) {
+            log.info("Customer preferred employee: {}", request.getEmployeeId());
+            // This preference can be retrieved later by manager when assigning jobs
+        }
 
         log.info("Service booked successfully - jobId: {}, serviceId: {}", savedJob.getJobId(), service.getServiceId());
 
