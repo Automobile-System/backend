@@ -4,16 +4,20 @@ import com.TenX.Automobile.model.dto.profile.request.CustomerProfileUpdateReques
 import com.TenX.Automobile.model.dto.profile.response.CustomerProfileResponse;
 import com.TenX.Automobile.model.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.model.dto.response.CustomerDashboardResponse;
+import com.TenX.Automobile.model.dto.response.EmployeeDetailsForCustomer;
+import com.TenX.Automobile.model.dto.response.EmployeeListResponse;
 import com.TenX.Automobile.model.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.model.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.model.dto.response.ServiceListResponse;
 import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Employee;
 import com.TenX.Automobile.model.entity.Job;
 import com.TenX.Automobile.model.entity.TimeLog;
 import com.TenX.Automobile.model.entity.Vehicle;
 import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.repository.CustomerRepository;
+import com.TenX.Automobile.repository.EmployeeRepository;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
 import com.TenX.Automobile.repository.TimeLogRepository;
@@ -39,6 +43,7 @@ public class CustomerService {
     private final ServiceRepository serviceRepository;
     private final TimeLogRepository timeLogRepository;
     private final JobRepository jobRepository;
+    private final EmployeeRepository employeeRepository;    
 
     public Customer registerCustomer(CustomerRegistrationRequest customerRegistrationRequest){
         log.info("Customer Registration Request: {}", customerRegistrationRequest.getEmail());
@@ -523,6 +528,20 @@ public class CustomerService {
                 .bookedAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();
+    }
+
+    public List<EmployeeDetailsForCustomer> getAllActiveEmployees(){
+        List<Employee> employees = employeeRepository.findEnabledStaffEmployees();
+        return employees.stream()
+                .map(e -> new EmployeeDetailsForCustomer(
+                        e.getId(),
+                        e.getFirstName() + " " + e.getLastName(),
+                        e.getCreatedAt(),
+                        e.getSpecialty(),   
+                        e.getEmpRating(),
+                        e.getProfileImageUrl()
+                ))
+                .toList();
     }
 }
 

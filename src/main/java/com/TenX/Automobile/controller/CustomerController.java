@@ -6,6 +6,7 @@ import com.TenX.Automobile.model.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.model.dto.request.VehicleRequest;
 import com.TenX.Automobile.model.dto.response.CustomerDashboardResponse;
 import com.TenX.Automobile.model.dto.response.CustomerRegistrationResponse;
+import com.TenX.Automobile.model.dto.response.EmployeeDetailsForCustomer;
 import com.TenX.Automobile.model.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.model.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.model.dto.response.ServiceListResponse;
@@ -249,7 +250,7 @@ public class CustomerController {
      * Get dashboard overview for the authenticated customer
      */
     @GetMapping("/customer/dashboard/overview")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') AND isAuthenticated()")
     public ResponseEntity<?> getDashboardOverview(Authentication authentication) {
         try {
             log.info("Customer: Get dashboard overview for user: {}", authentication.getName());
@@ -346,6 +347,25 @@ public class CustomerController {
             
         } catch (RuntimeException e) {
             log.warn("Failed to fetch service details: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching service details for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+
+    @GetMapping("/customer/all-employees")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getAllEmployees(Authentication authentication){
+        try{
+            log.info("Customer fetching all active employees:{}",authentication.getName());
+            List<EmployeeDetailsForCustomer> employees=customerService.getAllActiveEmployees();
+            return ResponseEntity.ok(employees);
+        }catch (RuntimeException e) {
+            log.warn("Failed to fetch all active employees: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

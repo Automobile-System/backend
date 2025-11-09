@@ -23,4 +23,7 @@ public class ServiceBookingRequest {
 
     @NotNull(message = "Vehicle ID is required")
     private UUID vehicleId;
+
+    // Optional: Preferred employee for the service (if not provided, manager will assign)
+    private UUID employeeId;
 }

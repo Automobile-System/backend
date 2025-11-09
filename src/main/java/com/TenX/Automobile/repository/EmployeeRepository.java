@@ -50,4 +50,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     
     @Query("SELECT COUNT(e) FROM Employee e WHERE :role MEMBER OF e.roles AND e.enabled = true")
     Long countActiveByRole(@Param("role") Role role);
+
+    @Query("SELECT e FROM Employee e WHERE e.enabled = true AND 'STAFF' IN elements(e.roles)")
+    List<Employee> findEnabledStaffEmployees();
+
 }
