@@ -1,5 +1,6 @@
 package com.TenX.Automobile.controller;
 
+import com.TenX.Automobile.model.dto.request.CreateConversationRequest;
 import com.TenX.Automobile.model.dto.request.SendMessageRequest;
 import com.TenX.Automobile.model.dto.response.ConversationResponse;
 import com.TenX.Automobile.model.dto.response.MessageResponse;
@@ -39,6 +40,31 @@ public class ChatController {
         log.info("Fetching conversations for employee ID: {}", employeeId);
         List<ConversationResponse> conversations = chatService.getConversationsByEmployeeId(employeeId);
         return ResponseEntity.ok(conversations);
+    }
+
+    /**
+     * GET /api/chat/conversations/participant/{participantId}
+     * Fetch conversations for the participant (e.g., customer)
+     */
+    @GetMapping("/conversations/participant/{participantId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'MANAGER', 'ADMIN', 'STAFF')")
+    public ResponseEntity<List<ConversationResponse>> getParticipantConversations(@PathVariable UUID participantId) {
+        log.info("Fetching conversations for participant ID: {}", participantId);
+        List<ConversationResponse> conversations = chatService.getConversationsByParticipantId(participantId);
+        return ResponseEntity.ok(conversations);
+    }
+
+    /**
+     * POST /api/chat/conversations
+     * Create or reuse conversation between participant and employee.
+     */
+    @PostMapping("/conversations")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN', 'CUSTOMER')")
+    public ResponseEntity<ConversationResponse> createConversation(
+            @Valid @RequestBody CreateConversationRequest request) {
+        log.info("Creating conversation between participant {} and employee {}", request.getParticipantId(), request.getEmployeeId());
+        ConversationResponse conversation = chatService.createConversation(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(conversation);
     }
 
     /**

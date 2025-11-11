@@ -17,5 +17,7 @@ public class ConversationResponse {
     private String lastMessageSnippet;
     private LocalDateTime lastMessageTime;
     private String associatedVehicle; // Vehicle registration number
+    private String participantId;
+    private String employeeId;
+    private String employeeName;
 }
-

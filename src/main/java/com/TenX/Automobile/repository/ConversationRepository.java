@@ -33,6 +33,14 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
         @Param("employeeId") UUID employeeId,
         @Param("participantId") UUID participantId
     );
+
+    /**
+     * Find all conversations for a participant (customer/manager)
+     */
+    @Query("SELECT DISTINCT c FROM Conversation c " +
+           "WHERE c.participant.id = :participantId " +
+           "ORDER BY c.updatedAt DESC")
+    List<Conversation> findByParticipantId(@Param("participantId") UUID participantId);
     
     /**
      * Find conversation by employee and vehicle
