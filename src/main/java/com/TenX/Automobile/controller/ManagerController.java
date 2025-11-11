@@ -86,6 +86,20 @@ public class ManagerController {
             .body(managerDashboardService.createService(request));
     }
 
+    @PutMapping("/service/{id}")
+    public ResponseEntity<Map<String, Object>> updateService(
+            @PathVariable("id") Long serviceId,
+            @Valid @RequestBody CreateServiceRequest request) {
+        log.info("Updating service '{}' with id {}", request.getTitle(), serviceId);
+        return ResponseEntity.ok(managerDashboardService.updateService(serviceId, request));
+    }
+
+    @DeleteMapping("/service/{id}")
+    public ResponseEntity<Map<String, Object>> deleteService(@PathVariable("id") Long serviceId) {
+        log.info("Deleting service with id {}", serviceId);
+        return ResponseEntity.ok(managerDashboardService.deleteService(serviceId));
+    }
+
     @GetMapping("/projects")
     public ResponseEntity<List<ProjectBoardResponse>> getAllProjects() {
         log.info("Getting all projects");

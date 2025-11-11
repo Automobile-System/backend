@@ -251,6 +251,61 @@ public class ManagerDashboardService {
         return response;
     }
 
+    public Map<String, Object> updateService(Long serviceId, CreateServiceRequest request) {
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(serviceId)
+            .orElseThrow(() -> new RuntimeException("Service not found"));
+
+        if (request.getTitle() != null &&
+            !request.getTitle().isBlank() &&
+            !request.getTitle().equalsIgnoreCase(service.getTitle())) {
+            boolean titleExists = serviceRepository.findByTitleContainingIgnoreCase(request.getTitle()).stream()
+                .filter(existing -> !Objects.equals(existing.getServiceId(), serviceId))
+                .anyMatch(existing -> existing.getTitle() != null &&
+                    existing.getTitle().equalsIgnoreCase(request.getTitle()));
+            if (titleExists) {
+                throw new RuntimeException("Service with the same title already exists");
+            }
+            service.setTitle(request.getTitle());
+        } else if (request.getTitle() != null) {
+            service.setTitle(request.getTitle());
+        }
+
+        if (request.getDescription() != null) {
+            service.setDescription(request.getDescription());
+        }
+        if (request.getCategory() != null) {
+            service.setCategory(request.getCategory());
+        }
+        if (request.getImageUrl() != null) {
+            service.setImageUrl(request.getImageUrl());
+        }
+        if (request.getEstimatedHours() != null) {
+            service.setEstimatedHours(request.getEstimatedHours());
+        }
+        if (request.getCost() != null) {
+            service.setCost(request.getCost());
+        }
+
+        serviceRepository.save(service);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Service updated successfully.");
+        response.put("serviceId", service.getServiceId());
+        return response;
+    }
+
+    public Map<String, Object> deleteService(Long serviceId) {
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(serviceId)
+            .orElseThrow(() -> new RuntimeException("Service not found"));
+
+        serviceRepository.delete(service);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Service deleted successfully.");
+        response.put("serviceId", serviceId);
+        return response;
+    }
+
     public List<ServiceResponse> getServices() {
         return serviceRepository.findAll().stream()
             .map(service -> ServiceResponse.builder()
