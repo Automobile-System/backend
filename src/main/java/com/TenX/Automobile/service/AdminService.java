@@ -285,20 +285,22 @@ public class AdminService {
     // ==================== PAGE 3: WORKFORCE OVERVIEW ====================
 
     public WorkforceOverviewResponse getWorkforceOverview() {
-        List<Employee> allEmployees = employeeRepository.findByRole(Role.STAFF);
-        List<Employee> managers = employeeRepository.findByRole(Role.MANAGER);
-
-        Integer totalEmployees = allEmployees.size();
-        Integer activeEmployees = (int) allEmployees.stream().filter(Employee::isEnabled).count();
-        Integer onLeave = 0; // TODO: Implement leave tracking
-        Integer frozen = (int) allEmployees.stream().filter(e -> !e.isEnabled()).count();
+        // Get all employees (both STAFF and MANAGER)
+        List<Employee> allStaff = employeeRepository.findByRole(Role.STAFF);
+        List<Employee> allManagers = employeeRepository.findByRole(Role.MANAGER);
+        
+        // Calculate total employees (STAFF + MANAGER)
+        Integer totalEmployees = allStaff.size() + allManagers.size();
+        Integer activeEmployees = (int) allStaff.stream().filter(Employee::isEnabled).count() + 
+                                  (int) allManagers.stream().filter(Employee::isEnabled).count();
+        Integer deactivatedEmployees = totalEmployees - activeEmployees;
 
         // Calculate average rating (mock - should come from customer ratings)
         Double avgRating = 4.5 + (Math.random() * 0.5);
         Double ratingChange = 0.2;
 
         // Calculate average workload
-        Double avgWorkload = allEmployees.stream()
+        Double avgWorkload = allStaff.stream()
             .mapToDouble(emp -> {
                 Long activeJobs = manageAssignJobRepository.countActiveJobsByEmployeeId(emp.getId());
                 return activeJobs.doubleValue();
@@ -311,7 +313,7 @@ public class AdminService {
 
         // Find overloaded employee
         WorkforceOverviewResponse.OverloadedEmployee overloadedEmployee = null;
-        for (Employee emp : allEmployees) {
+        for (Employee emp : allStaff) {
             Long activeJobs = manageAssignJobRepository.countActiveJobsByEmployeeId(emp.getId());
             if (activeJobs >= 5) {
                 overloadedEmployee = WorkforceOverviewResponse.OverloadedEmployee.builder()
@@ -329,8 +331,8 @@ public class AdminService {
             .stats(WorkforceOverviewResponse.WorkforceStats.builder()
                 .totalEmployees(totalEmployees)
                 .activeEmployees(activeEmployees)
-                .onLeave(onLeave)
-                .frozen(frozen)
+                .onLeave(0) // Not used - keeping for backward compatibility
+                .frozen(deactivatedEmployees)
                 .avgRating(Math.round(avgRating * 10.0) / 10.0)
                 .ratingChange(ratingChange)
                 .avgWorkload(Math.round(avgWorkload * 10.0) / 10.0)
@@ -338,7 +340,7 @@ public class AdminService {
                 .build())
             .centerInfo(WorkforceOverviewResponse.CenterInfo.builder()
                 .totalCenters(1)
-                .activeManagers(managers.size())
+                .activeManagers(allManagers.size())
                 .minimumManagers(1)
                 .totalEmployees(totalEmployees)
                 .build())
@@ -412,7 +414,7 @@ public class AdminService {
                 .email(manager.getEmail())
                 .phone(manager.getPhoneNumber())
                 .joinDate(formatDate(manager.getCreatedAt()))
-                .status(manager.isEnabled() ? "Active" : "Frozen")
+                .status(manager.isEnabled() ? "Active" : "Deactivated")
                 .build())
             .collect(Collectors.toList());
     }
@@ -423,7 +425,7 @@ public class AdminService {
         return employees.stream()
             .map(emp -> {
                 Double rating = 4.5 + (Math.random() * 0.5);
-                String status = emp.isEnabled() ? "Active" : "Frozen";
+                String status = emp.isEnabled() ? "Active" : "Deactivated";
                 
                 return EmployeeDetailResponse.builder()
                     .id(emp.getEmployeeId())
@@ -531,7 +533,7 @@ public class AdminService {
         return response;
     }
 
-    public Map<String, Object> updateManager(String managerId, AddManagerRequest request) {
+    public Map<String, Object> updateManager(String managerId, UpdateManagerRequest request) {
         Employee manager = employeeRepository.findByEmployeeId(managerId)
             .orElseThrow(() -> new RuntimeException("Manager not found"));
 
@@ -555,7 +557,7 @@ public class AdminService {
         return response;
     }
 
-    public Map<String, Object> updateEmployee(String employeeId, AddEmployeeRequest request) {
+    public Map<String, Object> updateEmployee(String employeeId, UpdateEmployeeRequest request) {
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
             .orElseThrow(() -> new RuntimeException("Employee not found"));
 
@@ -616,6 +618,23 @@ public class AdminService {
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Employee " + employeeId + " has been activated and is available for task assignments.");
+        return response;
+    }
+
+    public Map<String, Object> activateManager(String managerId) {
+        Employee manager = employeeRepository.findByEmployeeId(managerId)
+            .orElseThrow(() -> new RuntimeException("Manager not found"));
+
+        if (!manager.getRoles().contains(Role.MANAGER)) {
+            throw new RuntimeException("Employee is not a manager");
+        }
+
+        manager.setEnabled(true);
+        employeeRepository.save(manager);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Manager " + managerId + " has been activated and can now access the system.");
         return response;
     }
 

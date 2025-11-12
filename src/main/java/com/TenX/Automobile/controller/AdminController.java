@@ -308,7 +308,7 @@ public class AdminController {
     @PutMapping("/workforce/managers/{id}")
     public ResponseEntity<Map<String, Object>> updateManager(
             @PathVariable String id,
-            @Valid @RequestBody AddManagerRequest request) {
+            @Valid @RequestBody UpdateManagerRequest request) {
         log.info("Updating manager: {}", id);
         return ResponseEntity.ok(adminService.updateManager(id, request));
     }
@@ -320,7 +320,7 @@ public class AdminController {
     @PutMapping("/workforce/employees/{id}")
     public ResponseEntity<Map<String, Object>> updateEmployee(
             @PathVariable String id,
-            @Valid @RequestBody AddEmployeeRequest request) {
+            @Valid @RequestBody UpdateEmployeeRequest request) {
         log.info("Updating employee: {}", id);
         return ResponseEntity.ok(adminService.updateEmployee(id, request));
     }
@@ -353,6 +353,16 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> activateEmployee(@PathVariable String id) {
         log.info("Activating employee: {}", id);
         return ResponseEntity.ok(adminService.activateEmployee(id));
+    }
+
+    /**
+     * Activate manager
+     * PUT /api/admin/workforce/managers/{id}/activate
+     */
+    @PutMapping("/workforce/managers/{id}/activate")
+    public ResponseEntity<Map<String, Object>> activateManager(@PathVariable String id) {
+        log.info("Activating manager: {}", id);
+        return ResponseEntity.ok(adminService.activateManager(id));
     }
 
     // ==================== PAGE 4: SERVICES ANALYTICS ====================
