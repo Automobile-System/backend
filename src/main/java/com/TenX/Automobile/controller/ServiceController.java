@@ -1,6 +1,7 @@
 package com.TenX.Automobile.controller;
 
 import java.util.List;
+ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -78,7 +79,7 @@ public class ServiceController {
     public ResponseEntity<?> deleteService(@PathVariable Long id) {
         try {
             serviceEntityService.delete(id);
-            return ResponseEntity.ok("Service deleted successfully");
+            return ResponseEntity.ok(Map.of("message", "Service deleted successfully"));
         } catch (RuntimeException e) {
             log.error("Failed to delete service with id: {}", id, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

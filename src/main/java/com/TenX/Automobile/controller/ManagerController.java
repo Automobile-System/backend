@@ -1,6 +1,5 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.model.dto.request.CreateServiceRequest;
 import com.TenX.Automobile.model.dto.request.CreateSubTaskRequest;
 import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
 import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
@@ -31,7 +30,7 @@ import java.util.UUID;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/manager")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('MANAGER') AND isAuthenticated()")
 public class ManagerController {
@@ -78,25 +77,10 @@ public class ManagerController {
             .body(managerDashboardService.createSubTask(request));
     }
 
-    @PostMapping("/service")
-    public ResponseEntity<Map<String, Object>> createService(
-            @Valid @RequestBody CreateServiceRequest request) {
-        log.info("Creating new service '{}'", request.getTitle());
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(managerDashboardService.createService(request));
-    }
-
     @GetMapping("/projects")
     public ResponseEntity<List<ProjectBoardResponse>> getAllProjects() {
         log.info("Getting all projects");
         return ResponseEntity.ok(managerDashboardService.getAllProjects());
-    }
-
-    
-    @GetMapping("/service")
-    public ResponseEntity<List<ServiceResponse>> getAllServices() {
-        log.info("Getting all services");
-        return ResponseEntity.ok(managerDashboardService.getServices());
     }
 
     @GetMapping("/employees/available")
