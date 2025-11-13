@@ -66,6 +66,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-ui").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
                         
                         // Testing endpoint - REMOVE IN PRODUCTION!
@@ -161,7 +164,8 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:4200",
                 "http://localhost:8080",
-          "http://localhost:8081"
+                "http://localhost:8081",
+                "http://automobile.local"  // Added for Ingress access
         ));
         
         // Allow all HTTP methods
