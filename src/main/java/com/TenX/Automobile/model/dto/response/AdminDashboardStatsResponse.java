@@ -1,4 +1,4 @@
-package com.TenX.Automobile.dto.response;
+package com.TenX.Automobile.model.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

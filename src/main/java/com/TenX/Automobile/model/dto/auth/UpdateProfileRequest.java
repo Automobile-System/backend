@@ -1,4 +1,4 @@
-package com.TenX.Automobile.dto.auth;
+package com.TenX.Automobile.model.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;

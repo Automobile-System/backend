@@ -151,13 +151,13 @@ public class AdminService {
         Integer ongoingJobs = (int) jobRepository.findAll().stream()
             .filter(j -> j.getStatus() != null && 
                 !j.getStatus().equalsIgnoreCase("COMPLETED") && 
-                com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()))
+                JobType.SERVICE.equals(j.getType()))
             .count();
         
         Integer ongoingProjects = (int) jobRepository.findAll().stream()
             .filter(j -> j.getStatus() != null && 
                 !j.getStatus().equalsIgnoreCase("COMPLETED") && 
-                com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()))
+                JobType.PROJECT.equals(j.getType()))
             .count();
         
         // Monthly Revenue (current month)
@@ -267,7 +267,7 @@ public class AdminService {
         
         for (Job job : allJobs) {
             String status = job.getStatus() != null ? job.getStatus().toUpperCase() : "PENDING";
-            boolean isService = com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType());
+            boolean isService = JobType.SERVICE.equals(job.getType());
             
             if (status.contains("COMPLETED")) {
                 if (isService) jobsCompleted++; else projectsCompleted++;
@@ -634,11 +634,11 @@ public class AdminService {
         // Filter by service type if needed
         if ("predefined".equals(serviceFilter)) {
             jobs = jobs.stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()))
+                .filter(j -> JobType.SERVICE.equals(j.getType()))
                 .collect(Collectors.toList());
         } else if ("custom".equals(serviceFilter)) {
             jobs = jobs.stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()))
+                .filter(j -> JobType.PROJECT.equals(j.getType()))
                 .collect(Collectors.toList());
         }
 
@@ -1265,13 +1265,13 @@ public class AdminService {
      * Get all services with details
      */
     public List<ServiceInfoResponse> getAllServices() {
-        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findAll();
+        List<com.TenX.Automobile.model.entity.Service> services = serviceRepository.findAll();
         
         return services.stream()
             .map(service -> {
                 // Count total bookings for this service
                 Long totalBookings = jobRepository.findAll().stream()
-                    .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()) 
+                    .filter(job -> JobType.SERVICE.equals(job.getType()) 
                         && service.getServiceId().equals(job.getTypeId()))
                     .count();
                 
@@ -1297,7 +1297,7 @@ public class AdminService {
     public Map<String, Object> createService(CreateServiceRequest request) {
         Map<String, Object> response = new HashMap<>();
         
-        com.TenX.Automobile.entity.Service service = new com.TenX.Automobile.entity.Service();
+        com.TenX.Automobile.model.entity.Service service = new com.TenX.Automobile.model.entity.Service();
         service.setTitle(request.getTitle());
         service.setDescription(request.getDescription());
         service.setCategory(request.getCategory());
@@ -1307,7 +1307,7 @@ public class AdminService {
         service.setCreatedAt(LocalDateTime.now());
         service.setUpdatedAt(LocalDateTime.now());
         
-        com.TenX.Automobile.entity.Service savedService = serviceRepository.save(service);
+        com.TenX.Automobile.model.entity.Service savedService = serviceRepository.save(service);
         
         response.put("success", true);
         response.put("message", "Service created successfully");
@@ -1323,7 +1323,7 @@ public class AdminService {
     public Map<String, Object> updateService(Long serviceId, UpdateServiceRequest request) {
         Map<String, Object> response = new HashMap<>();
         
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(serviceId)
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(serviceId)
             .orElseThrow(() -> new RuntimeException("Service not found with ID: " + serviceId));
         
         // Update fields
@@ -1351,12 +1351,12 @@ public class AdminService {
     public Map<String, Object> deleteService(Long serviceId) {
         Map<String, Object> response = new HashMap<>();
         
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(serviceId)
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(serviceId)
             .orElseThrow(() -> new RuntimeException("Service not found with ID: " + serviceId));
         
         // Check if service is being used in any jobs
         boolean isUsed = jobRepository.findAll().stream()
-            .anyMatch(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()) 
+            .anyMatch(job -> JobType.SERVICE.equals(job.getType()) 
                 && serviceId.equals(job.getTypeId()));
         
         if (isUsed) {
@@ -1396,7 +1396,7 @@ public class AdminService {
     // Service Summary
     private ServiceAnalyticsDetailedResponse.ServiceSummary calculateServiceSummary() {
         List<Job> serviceJobs = jobRepository.findAll().stream()
-            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()))
+            .filter(job -> JobType.SERVICE.equals(job.getType()))
             .collect(Collectors.toList());
 
         int totalServices = serviceJobs.size();
@@ -1436,10 +1436,10 @@ public class AdminService {
     // 1. Popular Services Chart
     private ServiceAnalyticsDetailedResponse.PopularServices calculatePopularServices() {
         Map<String, Long> serviceCounts = jobRepository.findAll().stream()
-            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()))
+            .filter(job -> JobType.SERVICE.equals(job.getType()))
             .collect(Collectors.groupingBy(
                 job -> serviceRepository.findById(job.getTypeId())
-                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .map(com.TenX.Automobile.model.entity.Service::getTitle)
                     .orElse("Unknown"),
                 Collectors.counting()
             ));
@@ -1458,11 +1458,11 @@ public class AdminService {
     // 2. Average Job Cost
     private ServiceAnalyticsDetailedResponse.AverageCost calculateAverageCost() {
         Map<String, List<Job>> jobsByCategory = jobRepository.findAll().stream()
-            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()) 
+            .filter(job -> JobType.SERVICE.equals(job.getType()) 
                 && "COMPLETED".equals(job.getStatus()))
             .collect(Collectors.groupingBy(job -> 
                 serviceRepository.findById(job.getTypeId())
-                    .map(com.TenX.Automobile.entity.Service::getCategory)
+                    .map(com.TenX.Automobile.model.entity.Service::getCategory)
                     .orElse("Other")
             ));
 
@@ -1489,7 +1489,7 @@ public class AdminService {
         // Services average
         Double servicesAvg = serviceRepository.findAll().stream()
             .filter(s -> s.getEstimatedHours() != null)
-            .mapToDouble(com.TenX.Automobile.entity.Service::getEstimatedHours)
+            .mapToDouble(com.TenX.Automobile.model.entity.Service::getEstimatedHours)
             .average()
             .orElse(1.5);
 
@@ -1511,10 +1511,10 @@ public class AdminService {
     // 4. Category Performance
     private ServiceAnalyticsDetailedResponse.CategoryPerformance calculateCategoryPerformance() {
         Map<String, List<Job>> jobsByCategory = jobRepository.findAll().stream()
-            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()))
+            .filter(job -> JobType.SERVICE.equals(job.getType()))
             .collect(Collectors.groupingBy(job -> 
                 serviceRepository.findById(job.getTypeId())
-                    .map(com.TenX.Automobile.entity.Service::getCategory)
+                    .map(com.TenX.Automobile.model.entity.Service::getCategory)
                     .orElse("Other")
             ));
 

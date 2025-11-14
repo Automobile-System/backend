@@ -1,4 +1,4 @@
-package com.TenX.Automobile.dto.request;
+package com.TenX.Automobile.model.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
