@@ -1,9 +1,9 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.entity.ManageAssignJob;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.Employee;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.Employee;
+import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.repository.ManageAssignJobRepository;
 import com.TenX.Automobile.repository.JobRepository;
 import com.TenX.Automobile.repository.EmployeeRepository;

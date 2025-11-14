@@ -5,8 +5,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.TenX.Automobile.dto.request.ServiceRequest;
-import com.TenX.Automobile.dto.response.ServiceResponse;
+import com.TenX.Automobile.model.dto.request.ServiceRequest;
+import com.TenX.Automobile.model.dto.response.ServiceResponse;
 import com.TenX.Automobile.repository.ServiceRepository;
 
 import jakarta.transaction.Transactional;
@@ -28,13 +28,13 @@ public class ServiceEntityService {
     }
 
     public ServiceResponse findById(Long id) {
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(id)
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         return convertToResponse(service);
     }
 
     public ServiceResponse create(ServiceRequest request) {
-        com.TenX.Automobile.entity.Service service = com.TenX.Automobile.entity.Service.builder()
+        com.TenX.Automobile.model.entity.Service service = com.TenX.Automobile.model.entity.Service.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .category(request.getCategory())
@@ -43,13 +43,13 @@ public class ServiceEntityService {
                 .cost(request.getCost())
                 .build();
         
-        com.TenX.Automobile.entity.Service saved = serviceRepository.save(service);
+        com.TenX.Automobile.model.entity.Service saved = serviceRepository.save(service);
         log.info("Service created successfully with ID: {}", saved.getServiceId());
         return convertToResponse(saved);
     }
 
     public ServiceResponse update(Long id, ServiceRequest request) {
-        com.TenX.Automobile.entity.Service existing = serviceRepository.findById(id)
+        com.TenX.Automobile.model.entity.Service existing = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found with id: " + id));
         
         existing.setTitle(request.getTitle());
@@ -59,7 +59,7 @@ public class ServiceEntityService {
         existing.setEstimatedHours(request.getEstimatedHours());
         existing.setCost(request.getCost());
         
-        com.TenX.Automobile.entity.Service updated = serviceRepository.save(existing);
+        com.TenX.Automobile.model.entity.Service updated = serviceRepository.save(existing);
         log.info("Service updated successfully with ID: {}", updated.getServiceId());
         return convertToResponse(updated);
     }
@@ -72,7 +72,7 @@ public class ServiceEntityService {
         log.info("Service deleted successfully with ID: {}", id);
     }
 
-    private ServiceResponse convertToResponse(com.TenX.Automobile.entity.Service service) {
+    private ServiceResponse convertToResponse(com.TenX.Automobile.model.entity.Service service) {
         return ServiceResponse.builder()
                 .serviceId(service.getServiceId())
                 .title(service.getTitle())

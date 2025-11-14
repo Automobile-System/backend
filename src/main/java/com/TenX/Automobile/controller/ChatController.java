@@ -1,8 +1,8 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.SendMessageRequest;
-import com.TenX.Automobile.dto.response.ConversationResponse;
-import com.TenX.Automobile.dto.response.MessageResponse;
+import com.TenX.Automobile.model.dto.request.SendMessageRequest;
+import com.TenX.Automobile.model.dto.response.ConversationResponse;
+import com.TenX.Automobile.model.dto.response.MessageResponse;
 import com.TenX.Automobile.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

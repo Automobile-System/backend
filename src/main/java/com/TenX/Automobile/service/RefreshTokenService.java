@@ -1,7 +1,7 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.entity.RefreshToken;
-import com.TenX.Automobile.entity.UserEntity;
+import com.TenX.Automobile.model.entity.RefreshToken;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.repository.RefreshTokenRepository;
 import com.TenX.Automobile.security.config.JwtProperties;
 import jakarta.servlet.http.HttpServletRequest;

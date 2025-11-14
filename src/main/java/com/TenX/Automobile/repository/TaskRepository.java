@@ -1,6 +1,6 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.Task;
+import com.TenX.Automobile.model.entity.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,7 +25,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN t.project p " +
-           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = 'PROJECT' " +
            "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "ORDER BY t.createdAt ASC")
@@ -36,7 +36,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN t.project p " +
-           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = 'PROJECT' " +
            "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "AND t.status = :status " +
@@ -51,7 +51,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN t.project p " +
-           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = 'PROJECT' " +
            "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "AND t.createdAt >= :startDate " +
@@ -67,7 +67,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT COUNT(DISTINCT t) FROM Task t " +
            "JOIN t.project p " +
-           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = 'PROJECT' " +
            "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "AND CAST(t.createdAt AS date) = CURRENT_DATE")
@@ -78,7 +78,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      */
     @Query("SELECT COUNT(DISTINCT t) FROM Task t " +
            "JOIN t.project p " +
-           "JOIN Job j ON j.typeId = p.projectId AND j.type = com.TenX.Automobile.enums.JobType.PROJECT " +
+           "JOIN Job j ON j.typeId = p.projectId AND j.type = 'PROJECT' " +
            "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
            "WHERE maj.employee.id = :employeeId " +
            "AND t.status = 'COMPLETED' " +

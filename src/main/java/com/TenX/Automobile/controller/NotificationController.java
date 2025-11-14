@@ -1,7 +1,8 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.entity.Notification;
-import com.TenX.Automobile.entity.UserEntity;
+import com.TenX.Automobile.model.entity.Notification;
+import com.TenX.Automobile.model.entity.UserEntity;
+import com.TenX.Automobile.model.enums.NotificationType;
 import com.TenX.Automobile.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -189,7 +190,7 @@ public class NotificationController {
         Notification notification = notificationService.createNotification(
             userId,
             message,
-            com.TenX.Automobile.enums.NotificationType.SYSTEM,
+            NotificationType.SYSTEM,
             null
         );
         

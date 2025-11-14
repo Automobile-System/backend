@@ -1,9 +1,10 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.*;
-import com.TenX.Automobile.dto.response.*;
-import com.TenX.Automobile.entity.*;
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.dto.request.*;
+import com.TenX.Automobile.model.dto.response.*;
+import com.TenX.Automobile.model.entity.*;
+import com.TenX.Automobile.model.enums.Role;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -494,22 +495,22 @@ public class AdminService {
         List<Job> filteredJobs = jobs;
         if ("predefined".equals(serviceFilter)) {
             filteredJobs = jobs.stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()))
+                .filter(j -> JobType.SERVICE.equals(j.getType()))
                 .collect(Collectors.toList());
         } else if ("custom".equals(serviceFilter)) {
             filteredJobs = jobs.stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()))
+                .filter(j -> JobType.PROJECT.equals(j.getType()))
                 .collect(Collectors.toList());
         }
 
         // Group by service/project title
         Map<String, List<Job>> jobsByType = filteredJobs.stream()
             .collect(Collectors.groupingBy(job -> {
-                if (com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType())) {
+                if (JobType.SERVICE.equals(job.getType())) {
                     return serviceRepository.findById(job.getTypeId())
-                        .map(com.TenX.Automobile.entity.Service::getTitle)
+                        .map(com.TenX.Automobile.model.entity.Service::getTitle)
                         .orElse("Unknown Service");
-                } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(job.getType())) {
+                } else if (JobType.PROJECT.equals(job.getType())) {
                     return projectRepository.findById(job.getTypeId())
                         .map(Project::getTitle)
                         .orElse("Unknown Project");
@@ -546,11 +547,11 @@ public class AdminService {
             Double prevRevenue = prevJobs.stream()
                 .filter(j -> {
                     String jobTitle = null;
-                    if (com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType())) {
+                    if (JobType.SERVICE.equals(j.getType())) {
                         jobTitle = serviceRepository.findById(j.getTypeId())
-                            .map(com.TenX.Automobile.entity.Service::getTitle)
+                            .map(com.TenX.Automobile.model.entity.Service::getTitle)
                             .orElse("Unknown Service");
-                    } else if (com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType())) {
+                    } else if (JobType.PROJECT.equals(j.getType())) {
                         jobTitle = projectRepository.findById(j.getTypeId())
                             .map(Project::getTitle)
                             .orElse("Unknown Project");
@@ -1055,12 +1056,12 @@ public class AdminService {
 
         // Total Services - count completed SERVICE type jobs this month
         Long totalServicesMonth = jobRepository.findAll().stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                 j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
                 j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth))
             .count();
         Long totalServicesLastMonth = jobRepository.findAll().stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                 j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
                 j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfLastMonth) &&
                 j.getUpdatedAt().isBefore(startOfMonth))
@@ -1098,7 +1099,7 @@ public class AdminService {
 
         // Get completed SERVICE type jobs this month
         List<Job> serviceJobs = jobRepository.findAll().stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                 j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth) &&
                 j.getStatus() != null && "COMPLETED".equals(j.getStatus()))
             .collect(Collectors.toList());
@@ -1141,12 +1142,12 @@ public class AdminService {
         LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
 
         Long totalServicesMonth = jobRepository.findAll().stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                 j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
                 j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth))
             .count();
         Long totalServicesLastMonth = jobRepository.findAll().stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                 j.getStatus() != null && "COMPLETED".equals(j.getStatus()) &&
                 j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfLastMonth) &&
                 j.getUpdatedAt().isBefore(startOfMonth))
@@ -1183,7 +1184,7 @@ public class AdminService {
 
         // Get completed SERVICE type jobs this month
         List<Job> serviceJobs = jobRepository.findAll().stream()
-            .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+            .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                 j.getUpdatedAt() != null && j.getUpdatedAt().isAfter(startOfMonth) &&
                 j.getStatus() != null && "COMPLETED".equals(j.getStatus()))
             .collect(Collectors.toList());
@@ -1232,7 +1233,7 @@ public class AdminService {
             // Trend calculation - compare with last month
             Long prevMonthCount = jobRepository.findAll().stream()
                 .filter(j -> {
-                    if (!com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType())) return false;
+                    if (!JobType.SERVICE.equals(j.getType())) return false;
                     if (j.getStatus() == null || !"COMPLETED".equals(j.getStatus())) return false;
                     if (j.getUpdatedAt() == null) return false;
                     if (!j.getUpdatedAt().isAfter(startOfLastMonth) || !j.getUpdatedAt().isBefore(startOfMonth)) return false;
@@ -1808,7 +1809,7 @@ public class AdminService {
     }
 
     public List<SettingsServicesResponse> getServicesPricing() {
-        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findAll();
+        List<com.TenX.Automobile.model.entity.Service> services = serviceRepository.findAll();
         
         return services.stream()
             .map(service -> SettingsServicesResponse.builder()
@@ -2136,7 +2137,7 @@ public class AdminService {
             
             // Count completed SERVICE type jobs for this customer's vehicles
             Long servicesUsed = jobRepository.findByCustomerId(customer.getId()).stream()
-                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()) &&
+                .filter(j -> JobType.SERVICE.equals(j.getType()) &&
                     "COMPLETED".equals(j.getStatus()))
                 .count();
 

@@ -1,8 +1,8 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.auth.*;
-import com.TenX.Automobile.entity.RefreshToken;
-import com.TenX.Automobile.entity.UserEntity;
+import com.TenX.Automobile.model.dto.auth.*;
+import com.TenX.Automobile.model.entity.RefreshToken;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.exception.AccountLockedException;
 import com.TenX.Automobile.exception.InvalidCredentialsException;
 import com.TenX.Automobile.exception.RefreshTokenException;

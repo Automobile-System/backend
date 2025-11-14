@@ -1,7 +1,7 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.Employee;
-import com.TenX.Automobile.entity.TimeLog;
+import com.TenX.Automobile.model.entity.Employee;
+import com.TenX.Automobile.model.entity.TimeLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -46,6 +46,33 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
            "WHERE maj.employee.id = :employeeId " +
            "AND YEARWEEK(tl.startTime, 1) = YEARWEEK(CURRENT_DATE, 1)")
     Double calculateWeeklyTotalHours(@Param("employeeId") UUID employeeId);
+
+    /**
+     * Calculate total hours for an employee in a date range
+     */
+    @Query("SELECT COALESCE(SUM(tl.hoursWorked), 0.0) FROM TimeLog tl " +
+           "WHERE tl.employee.id = :employeeId " +
+           "AND CAST(tl.startTime AS date) >= :startDate " +
+           "AND CAST(tl.startTime AS date) <= :endDate")
+    Double calculateTotalHoursByDateRange(
+        @Param("employeeId") UUID employeeId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Find time logs by employee and date range
+     */
+    @Query("SELECT tl FROM TimeLog tl " +
+           "WHERE tl.employee.id = :employeeId " +
+           "AND CAST(tl.startTime AS date) >= :startDate " +
+           "AND CAST(tl.startTime AS date) <= :endDate " +
+           "ORDER BY tl.startTime ASC")
+    List<TimeLog> findByEmployeeAndDateRange(
+        @Param("employeeId") UUID employeeId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
 
     /**
      * Delete all time logs for an employee

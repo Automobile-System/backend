@@ -5,8 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.enums.JobType;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.enums.JobType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +34,10 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @Query("SELECT j FROM Job j WHERE j.vehicle.v_Id = :vehicleId AND j.status = :status")
     List<Job> findByVehicleIdAndStatus(@Param("vehicleId") UUID vehicleId, @Param("status") String status);
 
+
+    @Query("SELECT j FROM Job j WHERE j.status = :status")
+    List<Job> findByStatus(@Param("status") String status);
+    
     // Count jobs by date
     @Query("SELECT COUNT(j) FROM Job j WHERE DATE(j.arrivingDate) = DATE(:date)")
     Long countJobsByDate(@Param("date") LocalDateTime date);

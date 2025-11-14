@@ -1,8 +1,8 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.ServiceBookingRequest;
-import com.TenX.Automobile.dto.response.AvailableSlotResponse;
-import com.TenX.Automobile.dto.response.ServiceBookingResponse;
+import com.TenX.Automobile.model.dto.request.ServiceBookingRequest;
+import com.TenX.Automobile.model.dto.response.AvailableSlotResponse;
+import com.TenX.Automobile.model.dto.response.ServiceBookingResponse;
 import com.TenX.Automobile.service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

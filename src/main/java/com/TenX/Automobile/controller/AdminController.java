@@ -1,7 +1,9 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.*;
-import com.TenX.Automobile.dto.response.*;
+import com.TenX.Automobile.model.dto.request.*;
+import com.TenX.Automobile.model.dto.response.*;
+import com.TenX.Automobile.model.entity.Notification;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.service.AdminService;
 import com.TenX.Automobile.service.NotificationService;
 import jakarta.validation.Valid;
@@ -49,9 +51,9 @@ public class AdminController {
     public ResponseEntity<?> fetchNotifications(Authentication authentication) {
         log.info("Fetching notifications for admin: {}", authentication.getName());
         String email = authentication.getName();
-        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UserEntity user = adminService.getUserByEmail(email);
         UUID userId = user.getId();
-        List<com.TenX.Automobile.entity.Notification> notifications = notificationService.getUserNotifications(userId);
+        List<Notification> notifications = notificationService.getUserNotifications(userId);
         
         List<Map<String, Object>> response = notifications.stream()
             .map(n -> {
@@ -78,7 +80,7 @@ public class AdminController {
             Authentication authentication) {
         log.info("Marking notification {} as read", id);
         String email = authentication.getName();
-        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UserEntity user = adminService.getUserByEmail(email);
         UUID userId = user.getId();
         notificationService.markAsRead(id, userId);
         return ResponseEntity.ok(Map.of("message", "Notification marked as read"));
@@ -93,7 +95,7 @@ public class AdminController {
             Authentication authentication) {
         log.info("Deleting notification {}", id);
         String email = authentication.getName();
-        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UserEntity user = adminService.getUserByEmail(email);
         UUID userId = user.getId();
         notificationService.deleteNotification(id, userId);
         return ResponseEntity.ok(Map.of("message", "Notification deleted"));
@@ -106,7 +108,7 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> fetchUserProfile(Authentication authentication) {
         log.info("Fetching profile for admin: {}", authentication.getName());
         String email = authentication.getName();
-        com.TenX.Automobile.entity.UserEntity user = adminService.getUserByEmail(email);
+        UserEntity user = adminService.getUserByEmail(email);
         
         Map<String, Object> response = Map.of(
             "id", user.getId().toString(),

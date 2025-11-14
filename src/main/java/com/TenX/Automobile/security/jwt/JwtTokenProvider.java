@@ -1,6 +1,6 @@
 package com.TenX.Automobile.security.jwt;
 
-import com.TenX.Automobile.enums.Role;
+import com.TenX.Automobile.model.enums.Role;
 import com.TenX.Automobile.security.config.JwtProperties;
 import com.TenX.Automobile.security.constants.SecurityConstants;
 import io.jsonwebtoken.*;

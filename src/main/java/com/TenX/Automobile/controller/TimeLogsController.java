@@ -1,8 +1,9 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.ManualTimeLogRequest;
-import com.TenX.Automobile.dto.response.TimeLogResponse;
-import com.TenX.Automobile.dto.response.WeeklyTotalHoursResponse;
+import com.TenX.Automobile.model.dto.request.ManualTimeLogRequest;
+import com.TenX.Automobile.model.dto.response.TimeLogResponse;
+import com.TenX.Automobile.model.dto.response.WeeklyTotalHoursResponse;
+import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.service.TimeLogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -88,8 +89,8 @@ public class TimeLogsController {
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof com.TenX.Automobile.entity.UserEntity) {
-            return ((com.TenX.Automobile.entity.UserEntity) principal).getId();
+        if (principal instanceof UserEntity) {
+            return ((UserEntity) principal).getId();
         }
 
         throw new IllegalStateException("Unexpected authentication principal type: " + principal.getClass().getName());

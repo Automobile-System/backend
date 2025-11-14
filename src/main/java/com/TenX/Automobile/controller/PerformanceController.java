@@ -1,8 +1,8 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.response.ChartsDataResponse;
-import com.TenX.Automobile.dto.response.DemandMeterResponse;
-import com.TenX.Automobile.dto.response.MonthlyEarningsResponse;
+import com.TenX.Automobile.model.dto.response.ChartsDataResponse;
+import com.TenX.Automobile.model.dto.response.DemandMeterResponse;
+import com.TenX.Automobile.model.dto.response.MonthlyEarningsResponse;
 import com.TenX.Automobile.service.PerformanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

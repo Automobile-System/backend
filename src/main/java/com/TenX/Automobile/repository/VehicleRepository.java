@@ -1,7 +1,7 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.Customer;
-import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

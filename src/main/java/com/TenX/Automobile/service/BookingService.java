@@ -1,13 +1,17 @@
 package com.TenX.Automobile.service;
 
-import com.TenX.Automobile.dto.request.ServiceBookingRequest;
-import com.TenX.Automobile.dto.response.AvailableSlotResponse;
-import com.TenX.Automobile.dto.response.ServiceBookingResponse;
-import com.TenX.Automobile.entity.Customer;
-import com.TenX.Automobile.entity.Job;
-import com.TenX.Automobile.entity.Vehicle;
+import com.TenX.Automobile.model.dto.request.ServiceBookingRequest;
+import com.TenX.Automobile.model.dto.response.AvailableSlotResponse;
+import com.TenX.Automobile.model.dto.response.ServiceBookingResponse;
+import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Employee;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
+import com.TenX.Automobile.model.entity.Vehicle;
 import com.TenX.Automobile.repository.CustomerRepository;
+import com.TenX.Automobile.repository.EmployeeRepository;
 import com.TenX.Automobile.repository.JobRepository;
+import com.TenX.Automobile.repository.ManageAssignJobRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
 import com.TenX.Automobile.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,8 @@ public class BookingService {
     private final ServiceRepository serviceRepository;
     private final VehicleRepository vehicleRepository;
     private final CustomerRepository customerRepository;
+    private final EmployeeRepository employeeRepository;
+    private final ManageAssignJobRepository manageAssignJobRepository;
 
     @Value("${app.booking.max-jobs-per-day:10}")
     private Integer maxJobsPerDay;
@@ -133,13 +139,13 @@ public class BookingService {
 
     /**
      * Book a service for a customer
-     * @param request Service booking request with serviceId, arrivingDate, and vehicleId
+     * @param request Service booking request with serviceId, arrivingDate, vehicleId, and optional employeeId
      * @return ServiceBookingResponse with booking details
      */
     @Transactional
     public ServiceBookingResponse bookService(ServiceBookingRequest request) {
-        log.info("Booking service - serviceId: {}, arrivingDate: {}, vehicle: {}", 
-                request.getServiceId(), request.getArrivingDate(), request.getVehicleId());
+        log.info("Booking service - serviceId: {}, arrivingDate: {}, vehicle: {}, preferredEmployee: {}", 
+                request.getServiceId(), request.getArrivingDate(), request.getVehicleId(), request.getEmployeeId());
 
         // Get authenticated customer email
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -160,7 +166,7 @@ public class BookingService {
         }
 
         // Find the service template
-        com.TenX.Automobile.entity.Service service = serviceRepository.findById(request.getServiceId())
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found with ID: " + request.getServiceId()));
 
         // Find and validate vehicle belongs to customer
@@ -177,6 +183,35 @@ public class BookingService {
 
         // Save the job
         Job savedJob = jobRepository.save(job);
+
+        // If employeeId is provided, automatically assign the job to that employee
+        if (request.getEmployeeId() != null) {
+            log.info("Assigning job to customer preferred employee: {}", request.getEmployeeId());
+            
+            // Verify employee exists
+            Employee employee = employeeRepository.findById(request.getEmployeeId())
+                    .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + request.getEmployeeId()));
+            
+            // Find a manager to assign the job (use the first available manager or system assignment)
+            // In a real system, this would be the authenticated manager or system auto-assignment
+            Employee manager = employeeRepository.findAll().stream()
+                    .filter(emp -> emp.getRoles().contains(com.TenX.Automobile.model.enums.Role.MANAGER))
+                    .findFirst()
+                    .orElse(employee); // Fallback to self-assignment if no manager found
+            
+            // Create job assignment
+            ManageAssignJob assignment = ManageAssignJob.builder()
+                    .job(savedJob)
+                    .employee(employee)
+                    .manager(manager)
+                    .build();
+            
+            manageAssignJobRepository.save(assignment);
+            log.info("Job {} successfully assigned to employee {} by manager {}", 
+                    savedJob.getJobId(), employee.getId(), manager.getId());
+        } else {
+            log.info("No employee specified - job will be assigned by manager later");
+        }
 
         log.info("Service booked successfully - jobId: {}, serviceId: {}", savedJob.getJobId(), service.getServiceId());
 

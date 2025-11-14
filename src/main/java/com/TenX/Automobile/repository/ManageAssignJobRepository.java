@@ -1,7 +1,7 @@
 package com.TenX.Automobile.repository;
 
-import com.TenX.Automobile.entity.Employee;
-import com.TenX.Automobile.entity.ManageAssignJob;
+import com.TenX.Automobile.model.entity.Employee;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

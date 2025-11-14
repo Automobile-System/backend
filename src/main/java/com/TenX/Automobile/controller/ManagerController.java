@@ -1,7 +1,10 @@
 package com.TenX.Automobile.controller;
 
-import com.TenX.Automobile.dto.request.*;
-import com.TenX.Automobile.dto.response.*;
+import com.TenX.Automobile.model.dto.request.CreateServiceRequest;
+import com.TenX.Automobile.model.dto.request.CreateSubTaskRequest;
+import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
+import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
+import com.TenX.Automobile.model.dto.response.*;
 import com.TenX.Automobile.service.ManagerDashboardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +33,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('MANAGER')")
+@PreAuthorize("hasRole('MANAGER') AND isAuthenticated()")
 public class ManagerController {
 
     private final ManagerDashboardService managerDashboardService;
@@ -67,20 +70,20 @@ public class ManagerController {
     }
 
     // 3. Task & Project Management API
-    @PostMapping("/tasks")
-    public ResponseEntity<Map<String, Object>> createTask(
-            @Valid @RequestBody CreateTaskRequest request) {
-        log.info("Creating new task for customer: {}", request.getCustomerName());
+    @PostMapping("/subtasks")
+    public ResponseEntity<Map<String, Object>> createSubTask(
+            @Valid @RequestBody CreateSubTaskRequest request) {
+        log.info("Creating new subtask '{}' for project {}", request.getTitle(), request.getProjectId());
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(managerDashboardService.createTask(request));
+            .body(managerDashboardService.createSubTask(request));
     }
 
-    @PostMapping("/projects")
-    public ResponseEntity<Map<String, Object>> createProject(
-            @Valid @RequestBody CreateProjectRequest request) {
-        log.info("Creating new project: {}", request.getProjectTitle());
+    @PostMapping("/service")
+    public ResponseEntity<Map<String, Object>> createService(
+            @Valid @RequestBody CreateServiceRequest request) {
+        log.info("Creating new service '{}'", request.getTitle());
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(managerDashboardService.createProject(request));
+            .body(managerDashboardService.createService(request));
     }
 
     @GetMapping("/projects")
@@ -89,11 +92,11 @@ public class ManagerController {
         return ResponseEntity.ok(managerDashboardService.getAllProjects());
     }
 
-    // 4. Helper APIs
-    @GetMapping("/services/types")
-    public ResponseEntity<List<String>> getServiceTypes() {
-        log.info("Getting service types");
-        return ResponseEntity.ok(managerDashboardService.getServiceTypes());
+    
+    @GetMapping("/service")
+    public ResponseEntity<List<ServiceResponse>> getAllServices() {
+        log.info("Getting all services");
+        return ResponseEntity.ok(managerDashboardService.getServices());
     }
 
     @GetMapping("/employees/available")
@@ -148,5 +151,11 @@ public class ManagerController {
     public ResponseEntity<ReportsResponse> getCompletedProjectsByTypeReport() {
         log.info("Getting completed projects by type report");
         return ResponseEntity.ok(managerDashboardService.getCompletedProjectsByTypeReport());
+    }
+
+    @GetMapping("reports/completion-rate-trend")
+    public ResponseEntity<CompletionRatePercentageResponse> getCompletionRateTrendReport() {
+        log.info("Getting completion rate trend report");
+        return ResponseEntity.ok(managerDashboardService.getCompletionRateTrendReport());
     }
 }
