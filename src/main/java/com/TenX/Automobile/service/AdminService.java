@@ -95,6 +95,323 @@ public class AdminService {
             .build();
     }
 
+    /**
+     * Get comprehensive dashboard statistics for admin overview
+     */
+    public AdminDashboardStatsResponse getComprehensiveDashboardStats() {
+        log.info("Fetching comprehensive dashboard statistics");
+        
+        // KPIs
+        AdminDashboardStatsResponse.DashboardKPIs kpis = calculateDashboardKPIs();
+        
+        // Monthly Profit Trends (last 6 months)
+        AdminDashboardStatsResponse.MonthlyProfitTrend profitTrend = calculateMonthlyProfitTrend();
+        
+        // Job & Project Completion Status
+        AdminDashboardStatsResponse.JobProjectCompletion jobProjectCompletion = calculateJobProjectCompletion();
+        
+        // Service Category Distribution
+        AdminDashboardStatsResponse.ServiceCategoryDistribution serviceCategoryDistribution = calculateServiceCategoryDistribution();
+        
+        // Top 5 Employees by Hours Worked
+        List<AdminDashboardStatsResponse.TopEmployeeByHours> topEmployees = calculateTopEmployeesByHours();
+        
+        // Business Alerts
+        List<AdminDashboardStatsResponse.BusinessAlert> alerts = calculateBusinessAlerts();
+        
+        return AdminDashboardStatsResponse.builder()
+            .kpis(kpis)
+            .profitTrend(profitTrend)
+            .jobProjectCompletion(jobProjectCompletion)
+            .serviceCategoryDistribution(serviceCategoryDistribution)
+            .topEmployees(topEmployees)
+            .alerts(alerts)
+            .build();
+    }
+
+    private AdminDashboardStatsResponse.DashboardKPIs calculateDashboardKPIs() {
+        // Total Customers (enabled users with CUSTOMER role)
+        Integer totalCustomers = (int) customerRepository.findAll().stream()
+            .filter(c -> c.isEnabled())
+            .count();
+        
+        // Total Employees and Managers
+        Integer totalEmployees = (int) employeeRepository.findAll().stream()
+            .filter(e -> e.getRoles().contains(Role.STAFF) && e.isEnabled())
+            .count();
+        
+        Integer totalManagers = (int) employeeRepository.findAll().stream()
+            .filter(e -> e.getRoles().contains(Role.MANAGER) && e.isEnabled())
+            .count();
+        
+        // Ongoing Jobs and Projects (not completed)
+        Integer ongoingJobs = (int) jobRepository.findAll().stream()
+            .filter(j -> j.getStatus() != null && 
+                !j.getStatus().equalsIgnoreCase("COMPLETED") && 
+                com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()))
+            .count();
+        
+        Integer ongoingProjects = (int) jobRepository.findAll().stream()
+            .filter(j -> j.getStatus() != null && 
+                !j.getStatus().equalsIgnoreCase("COMPLETED") && 
+                com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()))
+            .count();
+        
+        // Monthly Revenue (current month)
+        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime now = LocalDateTime.now();
+        
+        Double monthlyRevenue = paymentRepository.findAll().stream()
+            .filter(p -> p.getCreatedAt() != null && 
+                p.getCreatedAt().isAfter(startOfMonth) && 
+                p.getCreatedAt().isBefore(now))
+            .mapToDouble(Payment::getP_Amount)
+            .sum();
+        
+        // Completed Services (all time)
+        Integer completedServices = (int) jobRepository.findAll().stream()
+            .filter(j -> j.getStatus() != null && j.getStatus().equalsIgnoreCase("COMPLETED"))
+            .count();
+        
+        return AdminDashboardStatsResponse.DashboardKPIs.builder()
+            .totalCustomers(totalCustomers)
+            .totalEmployees(totalEmployees)
+            .totalManagers(totalManagers)
+            .ongoingJobs(ongoingJobs)
+            .ongoingProjects(ongoingProjects)
+            .monthlyRevenue(monthlyRevenue)
+            .completedServices(completedServices)
+            .build();
+    }
+
+    private AdminDashboardStatsResponse.MonthlyProfitTrend calculateMonthlyProfitTrend() {
+        List<String> labels = new ArrayList<>();
+        List<Double> revenue = new ArrayList<>();
+        List<Double> cost = new ArrayList<>();
+        List<Double> profit = new ArrayList<>();
+        
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Group payments by month
+        Map<String, Double> monthlyRevenue = paymentRepository.findAll().stream()
+            .filter(p -> p.getCreatedAt() != null)
+            .collect(Collectors.groupingBy(
+                p -> p.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM")),
+                Collectors.summingDouble(Payment::getP_Amount)
+            ));
+        
+        // Group jobs by month
+        Map<String, Double> monthlyCost = jobRepository.findAll().stream()
+            .filter(j -> j.getCreatedAt() != null && j.getCost() != null)
+            .collect(Collectors.groupingBy(
+                j -> j.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM")),
+                Collectors.summingDouble(j -> j.getCost().doubleValue())
+            ));
+        
+        // Get all unique months and sort them
+        Set<String> allMonths = new java.util.TreeSet<>();
+        allMonths.addAll(monthlyRevenue.keySet());
+        allMonths.addAll(monthlyCost.keySet());
+        
+        // If we have data, take the last 6 months of actual data
+        // If no data, show last 6 calendar months with zeros
+        List<String> monthsToShow = new ArrayList<>(allMonths);
+        if (monthsToShow.isEmpty()) {
+            // No data - show last 6 months with zeros
+            for (int i = 5; i >= 0; i--) {
+                LocalDateTime monthStart = now.minusMonths(i);
+                String monthKey = monthStart.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                monthsToShow.add(monthKey);
+            }
+        } else {
+            // Has data - take last 6 months of data
+            int startIndex = Math.max(0, monthsToShow.size() - 6);
+            monthsToShow = monthsToShow.subList(startIndex, monthsToShow.size());
+        }
+        
+        // Build the response
+        for (String monthKey : monthsToShow) {
+            // Format label as "MMM yyyy"
+            try {
+                java.time.YearMonth ym = java.time.YearMonth.parse(monthKey);
+                labels.add(ym.format(DateTimeFormatter.ofPattern("MMM yyyy")));
+            } catch (Exception e) {
+                labels.add(monthKey);
+            }
+            
+            Double monthRevenue = monthlyRevenue.getOrDefault(monthKey, 0.0);
+            Double monthCost = monthlyCost.getOrDefault(monthKey, 0.0);
+            
+            revenue.add(monthRevenue);
+            cost.add(monthCost);
+            profit.add(monthRevenue - monthCost);
+        }
+        
+        return AdminDashboardStatsResponse.MonthlyProfitTrend.builder()
+            .labels(labels)
+            .revenue(revenue)
+            .cost(cost)
+            .profit(profit)
+            .build();
+    }
+
+    private AdminDashboardStatsResponse.JobProjectCompletion calculateJobProjectCompletion() {
+        List<Job> allJobs = jobRepository.findAll();
+        
+        // Count jobs by status
+        int jobsCompleted = 0, jobsInProgress = 0, jobsOnHold = 0, jobsPending = 0;
+        int projectsCompleted = 0, projectsInProgress = 0, projectsOnHold = 0, projectsPending = 0;
+        
+        for (Job job : allJobs) {
+            String status = job.getStatus() != null ? job.getStatus().toUpperCase() : "PENDING";
+            boolean isService = com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType());
+            
+            if (status.contains("COMPLETED")) {
+                if (isService) jobsCompleted++; else projectsCompleted++;
+            } else if (status.contains("IN_PROGRESS") || status.contains("ONGOING")) {
+                if (isService) jobsInProgress++; else projectsInProgress++;
+            } else if (status.contains("HOLD") || status.contains("PAUSED")) {
+                if (isService) jobsOnHold++; else projectsOnHold++;
+            } else {
+                if (isService) jobsPending++; else projectsPending++;
+            }
+        }
+        
+        return AdminDashboardStatsResponse.JobProjectCompletion.builder()
+            .jobs(AdminDashboardStatsResponse.StatusCounts.builder()
+                .completed(jobsCompleted)
+                .in_progress(jobsInProgress)
+                .on_hold(jobsOnHold)
+                .pending(jobsPending)
+                .build())
+            .projects(AdminDashboardStatsResponse.StatusCounts.builder()
+                .completed(projectsCompleted)
+                .in_progress(projectsInProgress)
+                .on_hold(projectsOnHold)
+                .pending(projectsPending)
+                .build())
+            .build();
+    }
+
+    private AdminDashboardStatsResponse.ServiceCategoryDistribution calculateServiceCategoryDistribution() {
+        var allServices = serviceRepository.findAll();
+        
+        // Group by category and count
+        Map<String, Long> categoryCounts = new HashMap<>();
+        for (var service : allServices) {
+            String category = service.getCategory() != null ? service.getCategory() : "Other";
+            categoryCounts.put(category, categoryCounts.getOrDefault(category, 0L) + 1);
+        }
+        
+        List<String> labels = new ArrayList<>(categoryCounts.keySet());
+        List<Integer> data = categoryCounts.values().stream()
+            .map(Long::intValue)
+            .collect(Collectors.toList());
+        
+        return AdminDashboardStatsResponse.ServiceCategoryDistribution.builder()
+            .labels(labels)
+            .data(data)
+            .build();
+    }
+
+    private List<AdminDashboardStatsResponse.TopEmployeeByHours> calculateTopEmployeesByHours() {
+        List<TimeLog> allTimeLogs = timeLogRepository.findAll();
+        
+        // Group by employee and sum hours
+        Map<Employee, Double> employeeHours = allTimeLogs.stream()
+            .filter(tl -> tl.getHoursWorked() != null && tl.getEmployee() != null)
+            .collect(Collectors.groupingBy(
+                TimeLog::getEmployee,
+                Collectors.summingDouble(TimeLog::getHoursWorked)
+            ));
+        
+        // Sort by hours descending and take top 5
+        return employeeHours.entrySet().stream()
+            .sorted(Map.Entry.<Employee, Double>comparingByValue().reversed())
+            .limit(5)
+            .map(entry -> {
+                Employee emp = entry.getKey();
+                return AdminDashboardStatsResponse.TopEmployeeByHours.builder()
+                    .employeeId(emp.getId() != null ? emp.getId().getMostSignificantBits() : 0L)
+                    .name(emp.getFirstName() + " " + emp.getLastName())
+                    .specialty(emp.getSpecialty() != null ? emp.getSpecialty() : "General")
+                    .totalHours(entry.getValue().intValue())
+                    .build();
+            })
+            .collect(Collectors.toList());
+    }
+
+    private List<AdminDashboardStatsResponse.BusinessAlert> calculateBusinessAlerts() {
+        List<AdminDashboardStatsResponse.BusinessAlert> alerts = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Check for overdue jobs
+        List<Job> overdueJobs = jobRepository.findAll().stream()
+            .filter(j -> j.getArrivingDate() != null && 
+                j.getArrivingDate().isBefore(now) && 
+                !j.getStatus().equalsIgnoreCase("COMPLETED"))
+            .collect(Collectors.toList());
+        
+        for (Job job : overdueJobs.stream().limit(3).collect(Collectors.toList())) {
+            alerts.add(AdminDashboardStatsResponse.BusinessAlert.builder()
+                .id((long) alerts.size() + 1)
+                .type("overdue_job")
+                .message("Job #" + job.getJobId() + " is overdue by " + 
+                    java.time.Duration.between(job.getArrivingDate(), now).toDays() + " days")
+                .severity("high")
+                .createdAt(now.toString())
+                .isRead(false)
+                .relatedId(job.getJobId())
+                .build());
+        }
+        
+        // Check for delayed projects
+        List<Project> delayedProjects = projectRepository.findAll().stream()
+            .filter(p -> p.getStatus() != null && 
+                (p.getStatus().contains("DELAYED") || p.getStatus().contains("HOLD")))
+            .collect(Collectors.toList());
+        
+        for (Project project : delayedProjects.stream().limit(2).collect(Collectors.toList())) {
+            alerts.add(AdminDashboardStatsResponse.BusinessAlert.builder()
+                .id((long) alerts.size() + 1)
+                .type("delayed_project")
+                .message("Project '" + project.getTitle() + "' is experiencing delays")
+                .severity("medium")
+                .createdAt(now.toString())
+                .isRead(false)
+                .relatedId(project.getProjectId())
+                .build());
+        }
+        
+        // Check for payment errors (jobs completed but not paid)
+        List<Job> completedJobs = jobRepository.findAll().stream()
+            .filter(j -> j.getStatus() != null && j.getStatus().equalsIgnoreCase("COMPLETED"))
+            .collect(Collectors.toList());
+        
+        for (Job job : completedJobs) {
+            boolean hasPaid = paymentRepository.findAll().stream()
+                .anyMatch(p -> p.getJob() != null && p.getJob().getJobId().equals(job.getJobId()));
+            
+            if (!hasPaid) {
+                alerts.add(AdminDashboardStatsResponse.BusinessAlert.builder()
+                    .id((long) alerts.size() + 1)
+                    .type("payment_error")
+                    .message("Job #" + job.getJobId() + " completed but payment not recorded")
+                    .severity("high")
+                    .createdAt(now.toString())
+                    .isRead(false)
+                    .relatedId(job.getJobId())
+                    .build());
+                
+                if (alerts.stream().filter(a -> a.getType().equals("payment_error")).count() >= 2) {
+                    break;
+                }
+            }
+        }
+        
+        return alerts;
+    }
+
     public List<SystemAlertResponse> getSystemAlerts() {
         List<SystemAlertResponse> alerts = new ArrayList<>();
 

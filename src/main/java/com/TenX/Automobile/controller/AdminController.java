@@ -157,12 +157,24 @@ public class AdminController {
     // ==================== PAGE 1: DASHBOARD ====================
 
     /**
-     * Get dashboard statistics
+     * Get comprehensive dashboard statistics
+     * Includes KPIs, profit trends, job/project completion, service distribution,
+     * top employees, and business alerts
      * GET /api/admin/dashboard/stats
      */
     @GetMapping("/dashboard/stats")
-    public ResponseEntity<DashboardStatsResponse> getDashboardStats() {
-        log.info("Getting dashboard statistics");
+    public ResponseEntity<AdminDashboardStatsResponse> getDashboardStats() {
+        log.info("Getting comprehensive dashboard statistics");
+        return ResponseEntity.ok(adminService.getComprehensiveDashboardStats());
+    }
+
+    /**
+     * Get old dashboard statistics (deprecated, for backward compatibility)
+     * GET /api/admin/dashboard/overview
+     */
+    @GetMapping("/dashboard/overview")
+    public ResponseEntity<DashboardStatsResponse> getDashboardOverview() {
+        log.info("Getting dashboard overview (deprecated endpoint)");
         return ResponseEntity.ok(adminService.getDashboardStats());
     }
 
