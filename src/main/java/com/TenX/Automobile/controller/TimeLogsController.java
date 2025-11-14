@@ -2,6 +2,7 @@ package com.TenX.Automobile.controller;
 
 import com.TenX.Automobile.model.dto.request.ManualTimeLogRequest;
 import com.TenX.Automobile.model.dto.response.TimeLogResponse;
+import com.TenX.Automobile.model.dto.request.UpdateRemarksRequest;
 import com.TenX.Automobile.model.dto.response.WeeklyTotalHoursResponse;
 import com.TenX.Automobile.model.entity.UserEntity;
 import com.TenX.Automobile.service.TimeLogService;
@@ -45,6 +46,20 @@ public class TimeLogsController {
         log.info("Fetching time logs for employee ID: {} with date range: {}", employeeId, dateRange);
         List<TimeLogResponse> timeLogs = timeLogService.getTimeLogsByEmployeeId(employeeId, dateRange);
         return ResponseEntity.ok(timeLogs);
+    }
+
+    /**
+     * PUT /api/timelogs/{logId}/remarks
+     * Update only the remarks for a specific time log
+     */
+    @PutMapping("/{logId}/remarks")
+    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER', 'ADMIN')")
+    public ResponseEntity<TimeLogResponse> updateTimeLogRemarks(@PathVariable Long logId, @RequestBody UpdateRemarksRequest request) {
+        if (request == null || request.getRemarks() == null || request.getRemarks().isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        TimeLogResponse updated = timeLogService.updateTimeLogRemarks(logId, request.getRemarks());
+        return ResponseEntity.ok(updated);
     }
 
     /**

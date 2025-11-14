@@ -234,7 +234,9 @@ public class TimeLogService {
         }
         
         List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-            employeeId, startDate, endDate);
+            employeeId.toString(), 
+            startDate != null ? startDate.toString() : null, 
+            endDate != null ? endDate.toString() : null);
         
         return timeLogs.stream()
                 .map(this::convertToTimeLogResponse)
@@ -317,7 +319,9 @@ public class TimeLogService {
             LocalDate endOfWeek = startOfWeek.plusDays(6);
             
             List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-                employeeId, startOfWeek, endOfWeek);
+                employeeId.toString(), 
+                startOfWeek.toString(), 
+                endOfWeek.toString());
             
             totalHours = timeLogs.stream()
                     .filter(tl -> tl.getHoursWorked() != null)
@@ -328,6 +332,18 @@ public class TimeLogService {
         return WeeklyTotalHoursResponse.builder()
                 .totalHoursThisWeek(totalHours != null ? totalHours : 0.0)
                 .build();
+    }
+
+    /**
+     * Update only the remarks/description field for a time log and return DTO
+     */
+    public TimeLogResponse updateTimeLogRemarks(Long logId, String remarks) {
+        log.info("Updating remarks for time log ID: {}", logId);
+        TimeLog existing = timeLogRepository.findById(logId)
+                .orElseThrow(() -> new ResourceNotFoundException("Time log not found with id: " + logId));
+        existing.setDescription(remarks);
+        TimeLog saved = timeLogRepository.save(existing);
+        return convertToTimeLogResponse(saved);
     }
 
     /**

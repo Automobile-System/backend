@@ -156,7 +156,9 @@ public class PerformanceService {
      */
     private Double calculateTotalHoursForMonth(UUID employeeId, LocalDate startDate, LocalDate endDate) {
         List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-            employeeId, startDate, endDate);
+            employeeId.toString(), 
+            startDate.toString(), 
+            endDate.toString());
         
         return timeLogs.stream()
                 .filter(tl -> tl.getHoursWorked() != null)
@@ -200,7 +202,9 @@ public class PerformanceService {
         LocalDate startDate = endDate.minusDays(days - 1);
         
         List<TimeLog> timeLogs = timeLogRepository.findTimeLogsByEmployeeIdAndDateRange(
-            employeeId, startDate, endDate);
+            employeeId.toString(), 
+            startDate.toString(), 
+            endDate.toString());
         
         // Group by date
         Map<LocalDate, Double> hoursByDate = timeLogs.stream()

@@ -68,8 +68,8 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
                         
-                        // Testing endpoint - REMOVE IN PRODUCTION!
-                        .requestMatchers("/api/services").permitAll()
+                        // Public service catalog endpoints
+                        .requestMatchers("/api/services", "/api/services/**").permitAll()
 
 
                         
