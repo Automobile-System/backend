@@ -70,6 +70,7 @@ public class SecurityConfig {
                         
                         // Testing endpoint - REMOVE IN PRODUCTION!
                         .requestMatchers("/api/services").permitAll()
+                        .requestMatchers("/api/booking/available-slots").permitAll()
 
 
                         
@@ -161,7 +162,8 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:4200",
                 "http://localhost:8080",
-          "http://localhost:8081"
+                "http://localhost:8081",
+                "http://localhost:8000"
         ));
         
         // Allow all HTTP methods

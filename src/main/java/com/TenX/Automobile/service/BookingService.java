@@ -4,10 +4,14 @@ import com.TenX.Automobile.model.dto.request.ServiceBookingRequest;
 import com.TenX.Automobile.model.dto.response.AvailableSlotResponse;
 import com.TenX.Automobile.model.dto.response.ServiceBookingResponse;
 import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Employee;
 import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
 import com.TenX.Automobile.model.entity.Vehicle;
 import com.TenX.Automobile.repository.CustomerRepository;
+import com.TenX.Automobile.repository.EmployeeRepository;
 import com.TenX.Automobile.repository.JobRepository;
+import com.TenX.Automobile.repository.ManageAssignJobRepository;
 import com.TenX.Automobile.repository.ServiceRepository;
 import com.TenX.Automobile.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,8 @@ public class BookingService {
     private final ServiceRepository serviceRepository;
     private final VehicleRepository vehicleRepository;
     private final CustomerRepository customerRepository;
+    private final EmployeeRepository employeeRepository;
+    private final ManageAssignJobRepository manageAssignJobRepository;
 
     @Value("${app.booking.max-jobs-per-day:10}")
     private Integer maxJobsPerDay;
@@ -178,12 +184,33 @@ public class BookingService {
         // Save the job
         Job savedJob = jobRepository.save(job);
 
-        // Note: employeeId is stored in the request for future manager assignment
-        // Manager will use ManageAssignJobRepository to assign employee to this job
-        // If employeeId is provided, manager should prioritize that employee
+        // If employeeId is provided, automatically assign the job to that employee
         if (request.getEmployeeId() != null) {
-            log.info("Customer preferred employee: {}", request.getEmployeeId());
-            // This preference can be retrieved later by manager when assigning jobs
+            log.info("Assigning job to customer preferred employee: {}", request.getEmployeeId());
+            
+            // Verify employee exists
+            Employee employee = employeeRepository.findById(request.getEmployeeId())
+                    .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + request.getEmployeeId()));
+            
+            // Find a manager to assign the job (use the first available manager or system assignment)
+            // In a real system, this would be the authenticated manager or system auto-assignment
+            Employee manager = employeeRepository.findAll().stream()
+                    .filter(emp -> emp.getRoles().contains(com.TenX.Automobile.model.enums.Role.MANAGER))
+                    .findFirst()
+                    .orElse(employee); // Fallback to self-assignment if no manager found
+            
+            // Create job assignment
+            ManageAssignJob assignment = ManageAssignJob.builder()
+                    .job(savedJob)
+                    .employee(employee)
+                    .manager(manager)
+                    .build();
+            
+            manageAssignJobRepository.save(assignment);
+            log.info("Job {} successfully assigned to employee {} by manager {}", 
+                    savedJob.getJobId(), employee.getId(), manager.getId());
+        } else {
+            log.info("No employee specified - job will be assigned by manager later");
         }
 
         log.info("Service booked successfully - jobId: {}, serviceId: {}", savedJob.getJobId(), service.getServiceId());

@@ -2,15 +2,19 @@ package com.TenX.Automobile.controller;
 
 import com.TenX.Automobile.model.dto.profile.request.CustomerProfileUpdateRequest;
 import com.TenX.Automobile.model.dto.profile.response.CustomerProfileResponse;
+import com.TenX.Automobile.model.dto.request.CustomerProjectRequest;
 import com.TenX.Automobile.model.dto.request.CustomerRegistrationRequest;
 import com.TenX.Automobile.model.dto.request.VehicleRequest;
 import com.TenX.Automobile.model.dto.response.CustomerDashboardResponse;
 import com.TenX.Automobile.model.dto.response.CustomerRegistrationResponse;
 import com.TenX.Automobile.model.dto.response.EmployeeDetailsForCustomer;
+import com.TenX.Automobile.model.dto.response.ProjectDetailResponse;
+import com.TenX.Automobile.model.dto.response.ProjectListResponse;
 import com.TenX.Automobile.model.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.model.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.model.dto.response.ServiceListResponse;
 import com.TenX.Automobile.model.dto.response.VehicleResponse;
+import com.TenX.Automobile.model.dto.request.ProjectUpdateRequest;
 import com.TenX.Automobile.model.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
 import com.TenX.Automobile.service.VehicleService;
@@ -308,9 +312,7 @@ public class CustomerController {
         
         try {
             log.info("Get customer services - status filter: {}", status);
-            
             List<ServiceListResponse> services = customerService.getCustomerServices(authentication.getName(), status);
-            
             return ResponseEntity.ok(services);
             
         } catch (IllegalArgumentException e) {
@@ -370,6 +372,169 @@ public class CustomerController {
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("Unexpected error fetching service details for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    // ==================== PROJECT ENDPOINTS ====================
+
+    /**
+     * Get all projects for authenticated customer
+     * @param status Optional status filter (active, completed, upcoming)
+     */
+    @Operation(summary = "Get all projects for the authenticated customer with optional status filter",
+               description = "statuses: active (IN_PROGRESS, PENDING), completed (COMPLETED), upcoming (future arriving dates)")
+    @GetMapping("/customer/projects")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getCustomerProjects(
+            Authentication authentication,
+            @RequestParam(required = false) String status) {
+        
+        try {
+            log.info("Get customer projects - user: {}, status filter: {}", authentication.getName(), status);
+            List<ProjectListResponse> projects = customerService.getCustomerProjects(authentication.getName(), status);
+            return ResponseEntity.ok(projects);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid status filter: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch projects: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching projects for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Get detailed information about a specific project
+     * @param jobId Job ID (project job)
+     */
+    @Operation(summary = "Get detailed information about a specific project",
+               description = "Returns complete project details including tasks, assigned employees, and time logs")
+    @GetMapping("/customer/projects/{jobId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getProjectDetails(
+            Authentication authentication,
+            @PathVariable Long jobId) {
+        
+        try {
+            log.info("Get project details - user: {}, jobId: {}", authentication.getName(), jobId);
+            
+            ProjectDetailResponse project = customerService.getProjectDetails(authentication.getName(), jobId);
+            
+            return ResponseEntity.ok(project);
+            
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch project details: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching project details for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Update project details
+     * @param jobId Job ID (project job)
+     * @param request Project update request
+     */
+    @Operation(summary = "Update project details",
+               description = "Updates project title, description, estimated hours, cost, and status")
+    @PutMapping("/customer/projects/{jobId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> updateProject(
+            Authentication authentication,
+            @PathVariable Long jobId,
+            @Valid @RequestBody ProjectUpdateRequest request) {
+        
+        try {
+            log.info("Update project - user: {}, jobId: {}", authentication.getName(), jobId);
+            
+            ProjectDetailResponse project = customerService.updateProject(authentication.getName(), jobId, request);
+            
+            return ResponseEntity.ok(project);
+            
+        } catch (RuntimeException e) {
+            log.warn("Failed to update project: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error updating project for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Delete a job (service or project) and all related data
+     * @param jobId Job ID to delete
+     */
+    @Operation(summary = "Delete a job (service or project)",
+               description = "Cascading delete removes time logs, job assignments, tasks (for projects), and the job itself")
+    @DeleteMapping("/customer/jobs/{jobId}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> deleteJob(
+            Authentication authentication,
+            @PathVariable Long jobId) {
+        
+        try {
+            log.info("Delete job - user: {}, jobId: {}", authentication.getName(), jobId);
+            
+            customerService.deleteJob(authentication.getName(), jobId);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Job deleted successfully",
+                "jobId", jobId
+            ));
+            
+        } catch (RuntimeException e) {
+            log.warn("Failed to delete job: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error deleting job {} for user: {}", jobId, authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
+    /**
+     * Create a new project by customer
+     * Customer provides only: vehicle selection, title, and description
+     * Manager will later add: cost, dates, tasks, employee assignments
+     */
+    @Operation(summary = "Create a new project request",
+               description = "Customer creates a project by providing vehicle, title, and description. Manager will handle rest of the details.")
+    @PostMapping("/customer/projects")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> createProject(
+            Authentication authentication,
+            @Valid @RequestBody CustomerProjectRequest request) {
+        
+        try {
+            log.info("Create project - user: {}, vehicleId: {}", authentication.getName(), request.getVehicleId());
+            
+            ProjectDetailResponse response = customerService.createProjectByCustomer(
+                authentication.getName(), 
+                request
+            );
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (RuntimeException e) {
+            log.warn("Failed to create project: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error creating project for user: {}", authentication.getName(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "An unexpected error occurred"));
         }
