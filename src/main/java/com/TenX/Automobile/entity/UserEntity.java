@@ -63,7 +63,7 @@ public class UserEntity implements UserDetails {
     @Column(name="national_id")
     private String nationalId;
 
-    @Column(name="profile_image_url")
+    @Column(name="profile_image_url", columnDefinition = "TEXT")
     private String profileImageUrl;
 
     @Column(name="phone_number")

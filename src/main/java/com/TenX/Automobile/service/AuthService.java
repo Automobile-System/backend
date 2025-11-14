@@ -18,6 +18,7 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Authenticate user with email and password
@@ -270,7 +272,37 @@ public class AuthService {
 
         UserEntity user = (UserEntity) authentication.getPrincipal();
         
+        // Handle password change if provided
+        if (request.getCurrentPassword() != null && request.getNewPassword() != null) {
+            // Verify current password
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                throw new InvalidCredentialsException("Current password is incorrect");
+            }
+            
+            // Validate new password (min 6 characters)
+            if (request.getNewPassword().length() < 6) {
+                throw new RuntimeException("New password must be at least 6 characters long");
+            }
+            
+            // Set new password
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            user.setPasswordChangedAt(LocalDateTime.now());
+            log.info("Password changed for user: {}", user.getEmail());
+        }
+        
         // Update only the fields that are provided
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            // Check if email is already taken by another user
+            String newEmail = request.getEmail().toLowerCase().trim();
+            if (!newEmail.equals(user.getEmail())) {
+                userRepository.findByEmail(newEmail).ifPresent(existingUser -> {
+                    if (!existingUser.getId().equals(user.getId())) {
+                        throw new RuntimeException("Email already in use");
+                    }
+                });
+                user.setEmail(newEmail);
+            }
+        }
         if (request.getFirstName() != null) {
             user.setFirstName(request.getFirstName());
         }

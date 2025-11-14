@@ -1,5 +1,6 @@
 package com.TenX.Automobile.dto.auth;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateProfileRequest {
     
+    @Email(message = "Invalid email format")
+    private String email;
+    
     private String firstName;
     
     private String lastName;
@@ -22,4 +26,8 @@ public class UpdateProfileRequest {
     private String nationalId;
     
     private String profileImageUrl;
+    
+    // Password change fields
+    private String currentPassword;
+    private String newPassword;
 }
