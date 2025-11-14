@@ -583,6 +583,26 @@ public class AdminService {
         Double overallTrend = prevTotalRevenue > 0 ? 
             ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100 : 0.0;
 
+        // Calculate monthly trend
+        FinancialReportResponse.MonthlyTrend monthlyTrend = calculateMonthlyTrend(
+            startDateTime, endDateTime, serviceFilter);
+
+        // Calculate revenue distribution
+        List<FinancialReportResponse.RevenueDistribution> revenueDistribution = breakdown.stream()
+            .map(b -> FinancialReportResponse.RevenueDistribution.builder()
+                .name(b.getServiceType())
+                .value(b.getRevenue())
+                .build())
+            .collect(Collectors.toList());
+
+        // Calculate cost analysis
+        List<FinancialReportResponse.CostAnalysis> costAnalysis = breakdown.stream()
+            .map(b -> FinancialReportResponse.CostAnalysis.builder()
+                .category(b.getServiceType())
+                .amount(b.getCost())
+                .build())
+            .collect(Collectors.toList());
+
         return FinancialReportResponse.builder()
             .breakdown(breakdown)
             .totals(FinancialReportResponse.FinancialTotals.builder()
@@ -596,6 +616,72 @@ public class AdminService {
                 .startDate(startDateStr)
                 .endDate(endDateStr)
                 .build())
+            .monthlyTrend(monthlyTrend)
+            .revenueDistribution(revenueDistribution)
+            .costAnalysis(costAnalysis)
+            .build();
+    }
+
+    private FinancialReportResponse.MonthlyTrend calculateMonthlyTrend(
+            LocalDateTime startDateTime, LocalDateTime endDateTime, String serviceFilter) {
+        
+        // Group jobs by month
+        List<Job> jobs = jobRepository.findJobsByDateRange(startDateTime, endDateTime);
+        
+        // Filter by service type if needed
+        if ("predefined".equals(serviceFilter)) {
+            jobs = jobs.stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.SERVICE.equals(j.getType()))
+                .collect(Collectors.toList());
+        } else if ("custom".equals(serviceFilter)) {
+            jobs = jobs.stream()
+                .filter(j -> com.TenX.Automobile.enums.JobType.PROJECT.equals(j.getType()))
+                .collect(Collectors.toList());
+        }
+
+        // Group by month
+        Map<String, List<Job>> jobsByMonth = jobs.stream()
+            .filter(j -> j.getCreatedAt() != null)
+            .collect(Collectors.groupingBy(job -> {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
+                return job.getCreatedAt().format(formatter);
+            }));
+
+        // Get sorted months
+        List<String> months = new ArrayList<>(jobsByMonth.keySet());
+        Collections.sort(months);
+
+        // Calculate revenue, cost, profit per month
+        List<String> labels = new ArrayList<>();
+        List<Double> revenueList = new ArrayList<>();
+        List<Double> costList = new ArrayList<>();
+        List<Double> profitList = new ArrayList<>();
+
+        DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM yyyy");
+        
+        for (String month : months) {
+            List<Job> monthJobs = jobsByMonth.get(month);
+            
+            Double revenue = monthJobs.stream()
+                .mapToDouble(j -> j.getCost() != null ? j.getCost().doubleValue() : 0.0)
+                .sum();
+            
+            Double cost = revenue * 0.5; // Simplified cost calculation
+            Double profit = revenue - cost;
+
+            // Format label as "Jan 2025"
+            LocalDate monthDate = LocalDate.parse(month + "-01");
+            labels.add(monthDate.format(labelFormatter));
+            revenueList.add(revenue);
+            costList.add(cost);
+            profitList.add(profit);
+        }
+
+        return FinancialReportResponse.MonthlyTrend.builder()
+            .labels(labels)
+            .revenue(revenueList)
+            .cost(costList)
+            .profit(profitList)
             .build();
     }
 

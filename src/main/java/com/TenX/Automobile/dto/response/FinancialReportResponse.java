@@ -15,6 +15,9 @@ public class FinancialReportResponse {
     private List<ServiceTypeBreakdown> breakdown;
     private FinancialTotals totals;
     private Period period;
+    private MonthlyTrend monthlyTrend;
+    private List<RevenueDistribution> revenueDistribution;
+    private List<CostAnalysis> costAnalysis;
 
     @Data
     @Builder
@@ -48,6 +51,35 @@ public class FinancialReportResponse {
     public static class Period {
         private String startDate;
         private String endDate;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MonthlyTrend {
+        private List<String> labels;      // Month names
+        private List<Double> revenue;     // Revenue per month
+        private List<Double> cost;        // Cost per month
+        private List<Double> profit;      // Profit per month
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RevenueDistribution {
+        private String name;
+        private Double value;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CostAnalysis {
+        private String category;
+        private Double amount;
     }
 }
 
