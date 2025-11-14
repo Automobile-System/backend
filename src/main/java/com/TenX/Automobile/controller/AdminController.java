@@ -613,6 +613,16 @@ public class AdminController {
     }
 
     /**
+     * Get comprehensive customer analytics for dashboard
+     * GET /api/admin/customers/analytics
+     */
+    @GetMapping("/customers/analytics")
+    public ResponseEntity<CustomerAnalyticsResponse> getCustomerAnalytics() {
+        log.info("Getting comprehensive customer analytics");
+        return ResponseEntity.ok(adminService.getCustomerAnalytics());
+    }
+
+    /**
      * Get list of all customers
      * GET /api/admin/customers/list
      */

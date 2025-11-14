@@ -2069,6 +2069,404 @@ public class AdminService {
         return mapToCustomerListResponse(customer);
     }
 
+    /**
+     * Get comprehensive customer analytics for dashboard
+     */
+    public CustomerAnalyticsResponse getCustomerAnalytics() {
+        log.info("Fetching comprehensive customer analytics");
+        
+        // Calculate stats
+        CustomerAnalyticsResponse.CustomerStats stats = calculateCustomerStats();
+        
+        // Get top customers
+        List<CustomerAnalyticsResponse.CustomerDetail> topCustomers = getTopCustomersBySpending(10);
+        
+        // Calculate growth trend
+        CustomerAnalyticsResponse.CustomerGrowthTrend growthTrend = calculateCustomerGrowthTrend();
+        
+        // Calculate vehicle brand distribution
+        CustomerAnalyticsResponse.VehicleBrandDistribution vehicleBrandDistribution = calculateVehicleBrandDistribution();
+        
+        // Calculate engagement
+        CustomerAnalyticsResponse.CustomerEngagement engagement = calculateCustomerEngagement();
+        
+        // Calculate revenue stats
+        CustomerAnalyticsResponse.RevenueByCustomer revenueStats = calculateRevenueByCustomer();
+        
+        return CustomerAnalyticsResponse.builder()
+            .stats(stats)
+            .topCustomers(topCustomers)
+            .growthTrend(growthTrend)
+            .vehicleBrandDistribution(vehicleBrandDistribution)
+            .engagement(engagement)
+            .revenueStats(revenueStats)
+            .build();
+    }
+
+    private CustomerAnalyticsResponse.CustomerStats calculateCustomerStats() {
+        List<Customer> allCustomers = customerRepository.findAll();
+        
+        Integer totalCustomers = allCustomers.size();
+        Integer activeCustomers = (int) allCustomers.stream()
+            .filter(Customer::isEnabled)
+            .count();
+        Integer inactiveCustomers = totalCustomers - activeCustomers;
+        
+        // New customers this month
+        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        Integer newThisMonth = (int) allCustomers.stream()
+            .filter(c -> c.getCreatedAt() != null && c.getCreatedAt().isAfter(startOfMonth))
+            .count();
+        
+        // Total vehicles
+        Integer totalVehicles = vehicleRepository.findAll().size();
+        
+        // Total completed jobs
+        Integer totalJobsCompleted = (int) jobRepository.findAll().stream()
+            .filter(j -> "COMPLETED".equals(j.getStatus()))
+            .count();
+        
+        // Total revenue
+        Double totalRevenue = paymentRepository.findAll().stream()
+            .mapToDouble(Payment::getP_Amount)
+            .sum();
+        
+        // Average spend per customer
+        Double avgSpendPerCustomer = totalCustomers > 0 ? totalRevenue / totalCustomers : 0.0;
+        
+        // Retention rate (customers with 2+ services / total customers)
+        long retainedCustomers = allCustomers.stream()
+            .filter(c -> {
+                List<Job> customerJobs = jobRepository.findByCustomerId(c.getId());
+                return customerJobs.stream()
+                    .filter(j -> "COMPLETED".equals(j.getStatus()))
+                    .count() >= 2;
+            })
+            .count();
+        Double retentionRate = totalCustomers > 0 ? (retainedCustomers * 100.0 / totalCustomers) : 0.0;
+        
+        return CustomerAnalyticsResponse.CustomerStats.builder()
+            .totalCustomers(totalCustomers)
+            .activeCustomers(activeCustomers)
+            .newThisMonth(newThisMonth)
+            .inactiveCustomers(inactiveCustomers)
+            .retentionRate(Math.round(retentionRate * 10.0) / 10.0)
+            .totalVehicles(totalVehicles)
+            .totalJobsCompleted(totalJobsCompleted)
+            .totalRevenue(Math.round(totalRevenue * 100.0) / 100.0)
+            .avgSpendPerCustomer(Math.round(avgSpendPerCustomer * 100.0) / 100.0)
+            .build();
+    }
+
+    private List<CustomerAnalyticsResponse.CustomerDetail> getTopCustomersBySpending(int limit) {
+        List<Customer> customers = customerRepository.findAll();
+        
+        return customers.stream()
+            .map(customer -> {
+                // Get vehicle count
+                Integer vehicleCount = customer.getVehicles() != null ? customer.getVehicles().size() : 0;
+                
+                // Get all jobs for customer
+                List<Job> customerJobs = jobRepository.findByCustomerId(customer.getId());
+                Integer totalJobs = customerJobs.size();
+                Integer completedJobs = (int) customerJobs.stream()
+                    .filter(j -> "COMPLETED".equals(j.getStatus()))
+                    .count();
+                Integer activeJobs = (int) customerJobs.stream()
+                    .filter(j -> !"COMPLETED".equals(j.getStatus()) && !"CANCELLED".equals(j.getStatus()))
+                    .count();
+                
+                // Get total spent
+                Double totalSpent = paymentRepository.sumAmountByCustomerId(customer.getId());
+                if (totalSpent == null) totalSpent = 0.0;
+                
+                // Get last service date
+                LocalDateTime lastPaymentDate = paymentRepository.findLastPaymentDateByCustomerId(customer.getId());
+                String lastServiceDate = lastPaymentDate != null ? 
+                    lastPaymentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "N/A";
+                
+                // Get vehicle brands
+                List<String> vehicleBrands = customer.getVehicles() != null ? 
+                    customer.getVehicles().stream()
+                        .map(v -> v.getBrandName() != null ? v.getBrandName() : "Unknown")
+                        .distinct()
+                        .collect(Collectors.toList()) : new ArrayList<>();
+                
+                // Calculate engagement score (based on service frequency)
+                Double engagementScore = completedJobs.doubleValue();
+                
+                String name = (customer.getFirstName() != null ? customer.getFirstName() : "") + 
+                             (customer.getLastName() != null ? " " + customer.getLastName() : "").trim();
+                if (name.isEmpty()) name = "N/A";
+                
+                String joinDate = customer.getCreatedAt() != null ? 
+                    customer.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "N/A";
+                
+                return CustomerAnalyticsResponse.CustomerDetail.builder()
+                    .customerId(customer.getCustomerId())
+                    .name(name)
+                    .email(customer.getEmail())
+                    .phone(customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "N/A")
+                    .joinDate(joinDate)
+                    .vehicleCount(vehicleCount)
+                    .totalJobs(totalJobs)
+                    .completedJobs(completedJobs)
+                    .activeJobs(activeJobs)
+                    .totalSpent(Math.round(totalSpent * 100.0) / 100.0)
+                    .lastServiceDate(lastServiceDate)
+                    .vehicleBrands(vehicleBrands)
+                    .status(customer.isEnabled() ? "Active" : "Inactive")
+                    .engagementScore(engagementScore)
+                    .build();
+            })
+            .sorted((a, b) -> Double.compare(b.getTotalSpent(), a.getTotalSpent()))
+            .limit(limit)
+            .collect(Collectors.toList());
+    }
+
+    private CustomerAnalyticsResponse.CustomerGrowthTrend calculateCustomerGrowthTrend() {
+        List<Customer> allCustomers = customerRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Get last 6 months
+        List<String> labels = new ArrayList<>();
+        List<Integer> newCustomers = new ArrayList<>();
+        List<Integer> totalCustomers = new ArrayList<>();
+        List<Integer> activeCustomers = new ArrayList<>();
+        
+        for (int i = 5; i >= 0; i--) {
+            LocalDateTime monthStart = now.minusMonths(i).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime monthEnd = monthStart.plusMonths(1).minusSeconds(1);
+            
+            // Format label
+            labels.add(monthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")));
+            
+            // Count new customers in this month
+            int newCount = (int) allCustomers.stream()
+                .filter(c -> c.getCreatedAt() != null && 
+                    c.getCreatedAt().isAfter(monthStart) && 
+                    c.getCreatedAt().isBefore(monthEnd))
+                .count();
+            newCustomers.add(newCount);
+            
+            // Count total customers up to this month
+            int totalCount = (int) allCustomers.stream()
+                .filter(c -> c.getCreatedAt() != null && c.getCreatedAt().isBefore(monthEnd))
+                .count();
+            totalCustomers.add(totalCount);
+            
+            // Count active customers in this month (those with jobs)
+            int activeCount = (int) allCustomers.stream()
+                .filter(c -> c.isEnabled() && c.getCreatedAt() != null && c.getCreatedAt().isBefore(monthEnd))
+                .filter(c -> {
+                    List<Job> customerJobs = jobRepository.findByCustomerId(c.getId());
+                    return customerJobs.stream()
+                        .anyMatch(j -> j.getCreatedAt() != null && 
+                            j.getCreatedAt().isAfter(monthStart) && 
+                            j.getCreatedAt().isBefore(monthEnd));
+                })
+                .count();
+            activeCustomers.add(activeCount);
+        }
+        
+        return CustomerAnalyticsResponse.CustomerGrowthTrend.builder()
+            .labels(labels)
+            .newCustomers(newCustomers)
+            .totalCustomers(totalCustomers)
+            .activeCustomers(activeCustomers)
+            .build();
+    }
+
+    private CustomerAnalyticsResponse.VehicleBrandDistribution calculateVehicleBrandDistribution() {
+        List<Vehicle> allVehicles = vehicleRepository.findAll();
+        
+        // Group by brand
+        Map<String, List<Vehicle>> vehiclesByBrand = allVehicles.stream()
+            .collect(Collectors.groupingBy(v -> v.getBrandName() != null ? v.getBrandName() : "Unknown"));
+        
+        // Sort by count and take top 10
+        List<Map.Entry<String, List<Vehicle>>> sortedBrands = vehiclesByBrand.entrySet().stream()
+            .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+            .limit(10)
+            .collect(Collectors.toList());
+        
+        List<String> brands = new ArrayList<>();
+        List<Integer> count = new ArrayList<>();
+        List<Integer> customerCount = new ArrayList<>();
+        
+        for (Map.Entry<String, List<Vehicle>> entry : sortedBrands) {
+            brands.add(entry.getKey());
+            count.add(entry.getValue().size());
+            
+            // Count unique customers for this brand
+            int uniqueCustomers = (int) entry.getValue().stream()
+                .map(v -> v.getCustomer() != null ? v.getCustomer().getId() : null)
+                .filter(id -> id != null)
+                .distinct()
+                .count();
+            customerCount.add(uniqueCustomers);
+        }
+        
+        return CustomerAnalyticsResponse.VehicleBrandDistribution.builder()
+            .brands(brands)
+            .count(count)
+            .customerCount(customerCount)
+            .build();
+    }
+
+    private CustomerAnalyticsResponse.CustomerEngagement calculateCustomerEngagement() {
+        List<Customer> allCustomers = customerRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        int highEngagement = 0;  // 5+ services
+        int mediumEngagement = 0;  // 2-4 services
+        int lowEngagement = 0;  // 1 service
+        int noEngagement = 0;  // 0 services
+        int totalCompletedServices = 0;
+        
+        for (Customer customer : allCustomers) {
+            List<Job> customerJobs = jobRepository.findByCustomerId(customer.getId());
+            long completedServices = customerJobs.stream()
+                .filter(j -> "COMPLETED".equals(j.getStatus()))
+                .count();
+            
+            totalCompletedServices += completedServices;
+            
+            if (completedServices >= 5) {
+                highEngagement++;
+            } else if (completedServices >= 2) {
+                mediumEngagement++;
+            } else if (completedServices == 1) {
+                lowEngagement++;
+            } else {
+                noEngagement++;
+            }
+        }
+        
+        Double avgServicesPerCustomer = allCustomers.size() > 0 ? 
+            totalCompletedServices / (double) allCustomers.size() : 0.0;
+        
+        // Monthly engagement for last 6 months
+        List<CustomerAnalyticsResponse.EngagementByMonth> monthlyEngagement = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            LocalDateTime monthStart = now.minusMonths(i).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime monthEnd = monthStart.plusMonths(1).minusSeconds(1);
+            
+            // Count active customers (those with jobs this month)
+            int activeCustomersCount = (int) allCustomers.stream()
+                .filter(c -> {
+                    List<Job> customerJobs = jobRepository.findByCustomerId(c.getId());
+                    return customerJobs.stream()
+                        .anyMatch(j -> j.getCreatedAt() != null && 
+                            j.getCreatedAt().isAfter(monthStart) && 
+                            j.getCreatedAt().isBefore(monthEnd));
+                })
+                .count();
+            
+            // Count total services this month
+            int totalServicesCount = (int) jobRepository.findAll().stream()
+                .filter(j -> j.getCreatedAt() != null && 
+                    j.getCreatedAt().isAfter(monthStart) && 
+                    j.getCreatedAt().isBefore(monthEnd))
+                .count();
+            
+            monthlyEngagement.add(CustomerAnalyticsResponse.EngagementByMonth.builder()
+                .month(monthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")))
+                .activeCustomers(activeCustomersCount)
+                .totalServices(totalServicesCount)
+                .build());
+        }
+        
+        return CustomerAnalyticsResponse.CustomerEngagement.builder()
+            .highEngagement(highEngagement)
+            .mediumEngagement(mediumEngagement)
+            .lowEngagement(lowEngagement)
+            .noEngagement(noEngagement)
+            .avgServicesPerCustomer(Math.round(avgServicesPerCustomer * 10.0) / 10.0)
+            .monthlyEngagement(monthlyEngagement)
+            .build();
+    }
+
+    private CustomerAnalyticsResponse.RevenueByCustomer calculateRevenueByCustomer() {
+        List<Payment> allPayments = paymentRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Total revenue
+        Double totalRevenue = allPayments.stream()
+            .mapToDouble(Payment::getP_Amount)
+            .sum();
+        
+        // Average revenue per customer
+        long totalCustomers = customerRepository.count();
+        Double avgRevenuePerCustomer = totalCustomers > 0 ? totalRevenue / totalCustomers : 0.0;
+        
+        // Top 10 spenders
+        List<CustomerAnalyticsResponse.TopSpender> topSpenders = customerRepository.findAll().stream()
+            .map(customer -> {
+                Double totalSpent = paymentRepository.sumAmountByCustomerId(customer.getId());
+                if (totalSpent == null) totalSpent = 0.0;
+                
+                // Count completed services
+                int servicesCount = (int) jobRepository.findByCustomerId(customer.getId()).stream()
+                    .filter(j -> "COMPLETED".equals(j.getStatus()))
+                    .count();
+                
+                String name = (customer.getFirstName() != null ? customer.getFirstName() : "") + 
+                             (customer.getLastName() != null ? " " + customer.getLastName() : "").trim();
+                if (name.isEmpty()) name = "N/A";
+                
+                return CustomerAnalyticsResponse.TopSpender.builder()
+                    .customerId(customer.getCustomerId())
+                    .name(name)
+                    .totalSpent(Math.round(totalSpent * 100.0) / 100.0)
+                    .servicesCount(servicesCount)
+                    .build();
+            })
+            .filter(s -> s.getTotalSpent() > 0)
+            .sorted((a, b) -> Double.compare(b.getTotalSpent(), a.getTotalSpent()))
+            .limit(10)
+            .collect(Collectors.toList());
+        
+        // Monthly revenue for last 6 months
+        List<CustomerAnalyticsResponse.MonthlyRevenue> monthlyRevenue = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            LocalDateTime monthStart = now.minusMonths(i).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            LocalDateTime monthEnd = monthStart.plusMonths(1).minusSeconds(1);
+            
+            Double revenue = allPayments.stream()
+                .filter(p -> p.getCreatedAt() != null && 
+                    p.getCreatedAt().isAfter(monthStart) && 
+                    p.getCreatedAt().isBefore(monthEnd))
+                .mapToDouble(Payment::getP_Amount)
+                .sum();
+            
+            // Count unique customers who paid this month
+            int customerCountThisMonth = (int) allPayments.stream()
+                .filter(p -> p.getCreatedAt() != null && 
+                    p.getCreatedAt().isAfter(monthStart) && 
+                    p.getCreatedAt().isBefore(monthEnd))
+                .map(p -> p.getJob() != null && p.getJob().getVehicle() != null && 
+                    p.getJob().getVehicle().getCustomer() != null ? 
+                    p.getJob().getVehicle().getCustomer().getId() : null)
+                .filter(id -> id != null)
+                .distinct()
+                .count();
+            
+            monthlyRevenue.add(CustomerAnalyticsResponse.MonthlyRevenue.builder()
+                .month(monthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")))
+                .revenue(Math.round(revenue * 100.0) / 100.0)
+                .customerCount(customerCountThisMonth)
+                .build());
+        }
+        
+        return CustomerAnalyticsResponse.RevenueByCustomer.builder()
+            .totalRevenue(Math.round(totalRevenue * 100.0) / 100.0)
+            .avgRevenuePerCustomer(Math.round(avgRevenuePerCustomer * 100.0) / 100.0)
+            .topSpenders(topSpenders)
+            .monthlyRevenue(monthlyRevenue)
+            .build();
+    }
+
     // ==================== HELPER METHODS ====================
 
     public UserEntity getUserById(UUID userId) {
