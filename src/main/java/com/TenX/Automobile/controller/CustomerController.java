@@ -14,6 +14,7 @@ import com.TenX.Automobile.model.dto.response.ServiceDetailResponse;
 import com.TenX.Automobile.model.dto.response.ServiceFrequencyResponse;
 import com.TenX.Automobile.model.dto.response.ServiceListResponse;
 import com.TenX.Automobile.model.dto.response.VehicleResponse;
+import com.TenX.Automobile.model.dto.response.VehicleServiceHistoryResponse;
 import com.TenX.Automobile.model.dto.request.ProjectUpdateRequest;
 import com.TenX.Automobile.model.entity.Customer;
 import com.TenX.Automobile.service.CustomerService;
@@ -249,6 +250,38 @@ public class CustomerController {
         }
     }
 
+    /**
+     * Get complete service history for a vehicle
+     * Shows all jobs (services and projects) with full details including employees, status, dates
+     */
+    @Operation(summary = "Get complete service history for a vehicle",
+               description = "Returns all services and projects for the vehicle with job details, assigned employees, work hours, and current status")
+    @GetMapping("/customer/vehicles/{id}/service-history")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<?> getVehicleServiceHistory(
+            @PathVariable("id") UUID vehicleId,
+            Authentication authentication) {
+        try {
+            log.info("Customer: Get service history for vehicle {} - user: {}", vehicleId, authentication.getName());
+            
+            VehicleServiceHistoryResponse history = vehicleService.getVehicleServiceHistory(
+                    authentication.getName(), 
+                    vehicleId
+            );
+            
+            return ResponseEntity.ok(history);
+        } catch (RuntimeException e) {
+            log.warn("Failed to fetch vehicle service history: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error fetching service history for vehicle {} - user: {}", 
+                    vehicleId, authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An unexpected error occurred"));
+        }
+    }
+
 
     /**
      * Get dashboard overview for the authenticated customer
@@ -331,19 +364,21 @@ public class CustomerController {
     }
 
     /**
-     * Get detailed information about a specific service
-     * @param serviceId Service ID
+     * Get detailed information about a specific service job
+     * @param jobId Job ID (service job)
      */
-    @GetMapping("/customer/services/{serviceId}")
+    @Operation(summary = "Get detailed information about a specific service job",
+               description = "Returns complete service details including assigned employees, time logs, and job status")
+    @GetMapping("/customer/services/{jobId}")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<?> getServiceDetails(
             Authentication authentication,
-            @PathVariable Long serviceId) {
+            @PathVariable Long jobId) {
         
         try {
-            log.info("Get service details - serviceId: {}", serviceId);
+            log.info("Get service details - jobId: {}", jobId);
             
-            ServiceDetailResponse service = customerService.getServiceDetails(authentication.getName(), serviceId);
+            ServiceDetailResponse service = customerService.getServiceDetails(authentication.getName(), jobId);
             
             return ResponseEntity.ok(service);
             

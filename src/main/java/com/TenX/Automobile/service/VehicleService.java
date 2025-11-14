@@ -2,18 +2,35 @@ package com.TenX.Automobile.service;
 
 import com.TenX.Automobile.model.dto.request.VehicleRequest;
 import com.TenX.Automobile.model.dto.response.VehicleResponse;
+import com.TenX.Automobile.model.dto.response.VehicleServiceHistoryResponse;
 import com.TenX.Automobile.model.entity.Vehicle;
 import com.TenX.Automobile.model.entity.Customer;
+import com.TenX.Automobile.model.entity.Job;
+import com.TenX.Automobile.model.entity.Project;
+import com.TenX.Automobile.model.entity.Task;
+import com.TenX.Automobile.model.entity.ManageAssignJob;
+import com.TenX.Automobile.model.entity.TimeLog;
+import com.TenX.Automobile.model.entity.Employee;
+import com.TenX.Automobile.model.enums.JobType;
 import com.TenX.Automobile.exception.DuplicateResourceException;
 import com.TenX.Automobile.exception.ResourceNotFoundException;
 import com.TenX.Automobile.repository.VehicleRepository;
 import com.TenX.Automobile.repository.CustomerRepository;
+import com.TenX.Automobile.repository.JobRepository;
+import com.TenX.Automobile.repository.ProjectRepository;
+import com.TenX.Automobile.repository.ServiceRepository;
+import com.TenX.Automobile.repository.TaskRepository;
+import com.TenX.Automobile.repository.ManageAssignJobRepository;
+import com.TenX.Automobile.repository.TimeLogRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 
+import java.time.LocalDateTime;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,6 +43,12 @@ public class VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final CustomerRepository customerRepository;
+    private final JobRepository jobRepository;
+    private final ProjectRepository projectRepository;
+    private final ServiceRepository serviceRepository;
+    private final TaskRepository taskRepository;
+    private final ManageAssignJobRepository manageAssignJobRepository;
+    private final TimeLogRepository timeLogRepository;
 
     /**
      * Get all vehicles for a customer
@@ -108,8 +131,9 @@ public class VehicleService {
     }
 
     /**
-     * Delete a vehicle
+     * Delete a vehicle (with cascading delete of all related data)
      */
+    @Transactional
     public void deleteVehicle(String email, UUID vehicleId) {
         log.info("Deleting vehicle {} for customer: {}", vehicleId, email);
 
@@ -119,8 +143,60 @@ public class VehicleService {
         Vehicle vehicle = vehicleRepository.findByIdAndCustomerId(vehicleId, customer.getId())
                 .orElseThrow(() -> new RuntimeException("Vehicle not found or does not belong to this customer"));
 
+        // Get all jobs for this vehicle
+        List<Job> jobs = jobRepository.findByVehicleId(vehicleId);
+        
+        if (!jobs.isEmpty()) {
+            log.info("Found {} jobs associated with vehicle {}. Performing cascading delete.", jobs.size(), vehicleId);
+            
+            // Delete each job and its related data
+            for (Job job : jobs) {
+                deleteJobAndRelatedData(job);
+            }
+        }
+
+        // Finally delete the vehicle
         vehicleRepository.delete(vehicle);
         log.info("Vehicle deleted successfully: {}", vehicleId);
+    }
+
+    /**
+     * Delete a job and all its related data in correct order
+     */
+    private void deleteJobAndRelatedData(Job job) {
+        Long jobId = job.getJobId();
+        log.info("Deleting job {} and related data", jobId);
+
+        // 1. Delete time logs
+        List<TimeLog> timeLogs = timeLogRepository.findByJobId(jobId);
+        if (!timeLogs.isEmpty()) {
+            timeLogRepository.deleteAll(timeLogs);
+            log.info("Deleted {} time logs for job {}", timeLogs.size(), jobId);
+        }
+
+        // 2. Delete job assignments
+        manageAssignJobRepository.findByJob_JobId(jobId).ifPresent(assignment -> {
+            manageAssignJobRepository.delete(assignment);
+            log.info("Deleted job assignment for job {}", jobId);
+        });
+
+        // 3. If it's a project, delete tasks and project
+        if (JobType.PROJECT.equals(job.getType())) {
+            projectRepository.findById(job.getTypeId()).ifPresent(project -> {
+                // Tasks will be deleted via cascade due to orphanRemoval = true
+                List<Task> tasks = taskRepository.findByProjectProjectId(project.getProjectId());
+                if (!tasks.isEmpty()) {
+                    taskRepository.deleteAll(tasks);
+                    log.info("Deleted {} tasks for project {}", tasks.size(), project.getProjectId());
+                }
+                projectRepository.delete(project);
+                log.info("Deleted project {}", project.getProjectId());
+            });
+        }
+
+        // 4. Finally delete the job
+        jobRepository.delete(job);
+        log.info("Deleted job {}", jobId);
     }
 
     /**
@@ -288,7 +364,7 @@ public class VehicleService {
     }
 
     /**
-     * Delete a vehicle by ID (UUID-based, without email authentication)
+     * Delete a vehicle by ID (UUID-based, with cascading delete)
      * @param vehicleId The vehicle ID
      */
     @Transactional
@@ -299,8 +375,143 @@ public class VehicleService {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehicle not found with ID: " + vehicleId));
         
+        // Get all jobs for this vehicle
+        List<Job> jobs = jobRepository.findByVehicleId(vehicleId);
+        
+        if (!jobs.isEmpty()) {
+            log.info("Found {} jobs associated with vehicle {}. Performing cascading delete.", jobs.size(), vehicleId);
+            
+            // Delete each job and its related data
+            for (Job job : jobs) {
+                deleteJobAndRelatedData(job);
+            }
+        }
+        
         vehicleRepository.delete(vehicle);
         log.info("Vehicle deleted successfully with ID: {}", vehicleId);
+    }
+
+    /**
+     * Get complete service history for a vehicle
+     * Shows all jobs (services and projects) with full details
+     */
+    public VehicleServiceHistoryResponse getVehicleServiceHistory(String email, UUID vehicleId) {
+        log.info("Fetching service history for vehicle {} - customer: {}", vehicleId, email);
+
+        Customer customer = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
+
+        Vehicle vehicle = vehicleRepository.findByIdAndCustomerId(vehicleId, customer.getId())
+                .orElseThrow(() -> new RuntimeException("Vehicle not found or does not belong to this customer"));
+
+        // Get all jobs for this vehicle
+        List<Job> jobs = jobRepository.findByVehicleId(vehicleId);
+
+        // Calculate statistics
+        long completedJobs = jobs.stream()
+                .filter(job -> "COMPLETED".equals(job.getStatus()))
+                .count();
+        long activeJobs = jobs.stream()
+                .filter(job -> !"COMPLETED".equals(job.getStatus()))
+                .count();
+
+        // Map to job history details
+        List<VehicleServiceHistoryResponse.JobHistoryDetail> jobHistory = jobs.stream()
+                .map(job -> mapToJobHistoryDetail(job))
+                .collect(Collectors.toList());
+
+        return VehicleServiceHistoryResponse.builder()
+                .vehicleRegistration(vehicle.getRegistration_No())
+                .vehicleBrand(vehicle.getBrandName())
+                .vehicleModel(vehicle.getModel())
+                .vehicleCapacity(vehicle.getCapacity())
+                .totalJobs(jobs.size())
+                .completedJobs((int) completedJobs)
+                .activeJobs((int) activeJobs)
+                .jobHistory(jobHistory)
+                .build();
+    }
+
+    /**
+     * Map Job entity to JobHistoryDetail DTO
+     */
+    private VehicleServiceHistoryResponse.JobHistoryDetail mapToJobHistoryDetail(Job job) {
+        VehicleServiceHistoryResponse.JobHistoryDetail.JobHistoryDetailBuilder builder = VehicleServiceHistoryResponse.JobHistoryDetail.builder()
+                .jobId(job.getJobId())
+                .jobType(job.getType().name())
+                .jobStatus(job.getStatus())
+                .arrivingDate(job.getArrivingDate())
+                .completionDate(job.getCompletionDate())
+                .cost(job.getCost())
+                .typeId(job.getTypeId())
+                .createdAt(job.getCreatedAt())
+                .updatedAt(job.getUpdatedAt());
+
+        // Get assigned employees and their time logs
+        List<VehicleServiceHistoryResponse.AssignedEmployeeDetail> assignedEmployees = new ArrayList<>();
+        
+        manageAssignJobRepository.findByJob_JobId(job.getJobId()).ifPresent(assignment -> {
+            Employee employee = assignment.getEmployee();
+            
+            // Get total hours worked by this employee on this job
+            List<TimeLog> timeLogs = timeLogRepository.findByJobIdAndEmployeeId(
+                    job.getJobId(), employee.getId());
+            double totalHours = timeLogs.stream()
+                    .mapToDouble(TimeLog::getHoursWorked)
+                    .sum();
+            
+            // Get work descriptions from time logs
+            String workDescription = timeLogs.stream()
+                    .map(TimeLog::getDescription)
+                    .filter(desc -> desc != null && !desc.isEmpty())
+                    .collect(Collectors.joining("; "));
+
+            VehicleServiceHistoryResponse.AssignedEmployeeDetail employeeDetail = VehicleServiceHistoryResponse.AssignedEmployeeDetail.builder()
+                    .employeeId(employee.getEmployeeId())
+                    .employeeName(employee.getFirstName() + " " + employee.getLastName())
+                    .specialty(employee.getSpecialty())
+                    .rating(employee.getEmpRating())
+                    .profileImageUrl(employee.getProfileImageUrl())
+                    .hoursWorked(totalHours)
+                    .workDescription(workDescription.isEmpty() ? null : workDescription)
+                    .assignedAt(assignment.getCreatedAt())
+                    .build();
+            
+            assignedEmployees.add(employeeDetail);
+        });
+
+        builder.assignedEmployees(assignedEmployees);
+
+        // If it's a service job
+        if (JobType.SERVICE.equals(job.getType())) {
+            serviceRepository.findById(job.getTypeId()).ifPresent(service -> {
+                builder.title(service.getTitle())
+                       .description(service.getDescription())
+                       .estimatedHours(service.getEstimatedHours())
+                       .category(service.getCategory())
+                       .imageUrl(service.getImageUrl());
+            });
+        }
+        // If it's a project job
+        else if (JobType.PROJECT.equals(job.getType())) {
+            projectRepository.findById(job.getTypeId()).ifPresent(project -> {
+                builder.title(project.getTitle())
+                       .description(project.getDescription())
+                       .estimatedHours(project.getEstimatedHours())
+                       .projectStatus(project.getStatus());
+                
+                // Get task statistics
+                List<Task> tasks = taskRepository.findByProjectProjectId(project.getProjectId());
+                long completedTasks = tasks.stream()
+                        .filter(task -> "COMPLETED".equals(task.getStatus()))
+                        .count();
+                
+                builder.totalTasks(tasks.size())
+                       .completedTasks((int) completedTasks);
+            });
+        }
+
+        return builder.build();
     }
 }
 
