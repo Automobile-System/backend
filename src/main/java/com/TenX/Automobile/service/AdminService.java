@@ -37,6 +37,8 @@ public class AdminService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final TimeLogRepository timeLogRepository;
+    private final TaskRepository taskRepository;
+    private final VehicleRepository vehicleRepository;
     private final PasswordEncoder passwordEncoder;
 
     // ==================== PAGE 1: DASHBOARD ====================
@@ -1256,6 +1258,400 @@ public class AdminService {
         }
 
         return performance;
+    }
+
+    /**
+     * Get all services with details
+     */
+    public List<ServiceInfoResponse> getAllServices() {
+        List<com.TenX.Automobile.entity.Service> services = serviceRepository.findAll();
+        
+        return services.stream()
+            .map(service -> {
+                // Count total bookings for this service
+                Long totalBookings = jobRepository.findAll().stream()
+                    .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()) 
+                        && service.getServiceId().equals(job.getTypeId()))
+                    .count();
+                
+                return ServiceInfoResponse.builder()
+                    .serviceId(service.getServiceId())
+                    .title(service.getTitle())
+                    .description(service.getDescription())
+                    .category(service.getCategory())
+                    .cost(service.getCost())
+                    .estimatedHours(service.getEstimatedHours())
+                    .imageUrl(service.getImageUrl())
+                    .totalBookings(totalBookings.intValue())
+                    .createdAt(service.getCreatedAt())
+                    .updatedAt(service.getUpdatedAt())
+                    .build();
+            })
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Create a new predefined service
+     */
+    public Map<String, Object> createService(CreateServiceRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        com.TenX.Automobile.entity.Service service = new com.TenX.Automobile.entity.Service();
+        service.setTitle(request.getTitle());
+        service.setDescription(request.getDescription());
+        service.setCategory(request.getCategory());
+        service.setCost(request.getCost());
+        service.setEstimatedHours(request.getEstimatedHours());
+        service.setImageUrl(request.getImageUrl());
+        service.setCreatedAt(LocalDateTime.now());
+        service.setUpdatedAt(LocalDateTime.now());
+        
+        com.TenX.Automobile.entity.Service savedService = serviceRepository.save(service);
+        
+        response.put("success", true);
+        response.put("message", "Service created successfully");
+        response.put("serviceId", savedService.getServiceId());
+        response.put("serviceName", savedService.getTitle());
+        
+        return response;
+    }
+
+    /**
+     * Update a predefined service
+     */
+    public Map<String, Object> updateService(Long serviceId, UpdateServiceRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        com.TenX.Automobile.entity.Service service = serviceRepository.findById(serviceId)
+            .orElseThrow(() -> new RuntimeException("Service not found with ID: " + serviceId));
+        
+        // Update fields
+        service.setTitle(request.getTitle());
+        service.setDescription(request.getDescription());
+        service.setCategory(request.getCategory());
+        service.setCost(request.getCost());
+        service.setEstimatedHours(request.getEstimatedHours());
+        service.setImageUrl(request.getImageUrl());
+        service.setUpdatedAt(LocalDateTime.now());
+        
+        serviceRepository.save(service);
+        
+        response.put("success", true);
+        response.put("message", "Service updated successfully");
+        response.put("serviceId", serviceId);
+        response.put("serviceName", request.getTitle());
+        
+        return response;
+    }
+
+    /**
+     * Delete a predefined service
+     */
+    public Map<String, Object> deleteService(Long serviceId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        com.TenX.Automobile.entity.Service service = serviceRepository.findById(serviceId)
+            .orElseThrow(() -> new RuntimeException("Service not found with ID: " + serviceId));
+        
+        // Check if service is being used in any jobs
+        boolean isUsed = jobRepository.findAll().stream()
+            .anyMatch(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()) 
+                && serviceId.equals(job.getTypeId()));
+        
+        if (isUsed) {
+            response.put("success", false);
+            response.put("message", "Cannot delete service - it is currently being used in jobs");
+            return response;
+        }
+        
+        String serviceName = service.getTitle();
+        serviceRepository.delete(service);
+        
+        response.put("success", true);
+        response.put("message", "Service deleted successfully");
+        response.put("serviceId", serviceId);
+        response.put("serviceName", serviceName);
+        
+        return response;
+    }
+
+    /**
+     * Get detailed service analytics with all charts
+     */
+    public ServiceAnalyticsDetailedResponse getDetailedServiceAnalytics() {
+        return ServiceAnalyticsDetailedResponse.builder()
+            .popularServices(calculatePopularServices())
+            .averageCost(calculateAverageCost())
+            .averageDuration(calculateAverageDuration())
+            .categoryPerformance(calculateCategoryPerformance())
+            .brandAnalytics(calculateBrandAnalytics())
+            .jobTimeliness(calculateJobTimeliness())
+            .taskDelays(calculateTaskDelays())
+            .projectAnalytics(calculateProjectAnalytics())
+            .serviceSummary(calculateServiceSummary())
+            .build();
+    }
+
+    // Service Summary
+    private ServiceAnalyticsDetailedResponse.ServiceSummary calculateServiceSummary() {
+        List<Job> serviceJobs = jobRepository.findAll().stream()
+            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()))
+            .collect(Collectors.toList());
+
+        int totalServices = serviceJobs.size();
+        int completed = (int) serviceJobs.stream()
+            .filter(j -> "COMPLETED".equals(j.getStatus()))
+            .count();
+        int inProgress = (int) serviceJobs.stream()
+            .filter(j -> "IN_PROGRESS".equals(j.getStatus()))
+            .count();
+        int waitingParts = (int) serviceJobs.stream()
+            .filter(j -> "WAITING_PARTS".equals(j.getStatus()))
+            .count();
+        int scheduled = (int) serviceJobs.stream()
+            .filter(j -> "SCHEDULED".equals(j.getStatus()))
+            .count();
+        int cancelled = (int) serviceJobs.stream()
+            .filter(j -> "CANCELLED".equals(j.getStatus()))
+            .count();
+
+        Double avgCost = serviceJobs.stream()
+            .filter(j -> "COMPLETED".equals(j.getStatus()) && j.getCost() != null)
+            .mapToDouble(j -> j.getCost().doubleValue())
+            .average()
+            .orElse(0.0);
+
+        return ServiceAnalyticsDetailedResponse.ServiceSummary.builder()
+            .totalServices(totalServices)
+            .completed(completed)
+            .inProgress(inProgress)
+            .waitingParts(waitingParts)
+            .scheduled(scheduled)
+            .cancelled(cancelled)
+            .averageCost(Math.round(avgCost * 100.0) / 100.0)
+            .build();
+    }
+
+    // 1. Popular Services Chart
+    private ServiceAnalyticsDetailedResponse.PopularServices calculatePopularServices() {
+        Map<String, Long> serviceCounts = jobRepository.findAll().stream()
+            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()))
+            .collect(Collectors.groupingBy(
+                job -> serviceRepository.findById(job.getTypeId())
+                    .map(com.TenX.Automobile.entity.Service::getTitle)
+                    .orElse("Unknown"),
+                Collectors.counting()
+            ));
+
+        List<Map.Entry<String, Long>> sortedEntries = serviceCounts.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(10)
+            .collect(Collectors.toList());
+
+        return ServiceAnalyticsDetailedResponse.PopularServices.builder()
+            .labels(sortedEntries.stream().map(Map.Entry::getKey).collect(Collectors.toList()))
+            .data(sortedEntries.stream().map(e -> e.getValue().intValue()).collect(Collectors.toList()))
+            .build();
+    }
+
+    // 2. Average Job Cost
+    private ServiceAnalyticsDetailedResponse.AverageCost calculateAverageCost() {
+        Map<String, List<Job>> jobsByCategory = jobRepository.findAll().stream()
+            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()) 
+                && "COMPLETED".equals(job.getStatus()))
+            .collect(Collectors.groupingBy(job -> 
+                serviceRepository.findById(job.getTypeId())
+                    .map(com.TenX.Automobile.entity.Service::getCategory)
+                    .orElse("Other")
+            ));
+
+        List<String> labels = new ArrayList<>();
+        List<Double> data = new ArrayList<>();
+
+        jobsByCategory.forEach((category, jobs) -> {
+            labels.add(category);
+            double avgCost = jobs.stream()
+                .mapToDouble(j -> j.getCost() != null ? j.getCost().doubleValue() : 0.0)
+                .average()
+                .orElse(0.0);
+            data.add(Math.round(avgCost * 100.0) / 100.0);
+        });
+
+        return ServiceAnalyticsDetailedResponse.AverageCost.builder()
+            .labels(labels)
+            .data(data)
+            .build();
+    }
+
+    // 3. Average Service Duration
+    private ServiceAnalyticsDetailedResponse.AverageDuration calculateAverageDuration() {
+        // Services average
+        Double servicesAvg = serviceRepository.findAll().stream()
+            .filter(s -> s.getEstimatedHours() != null)
+            .mapToDouble(com.TenX.Automobile.entity.Service::getEstimatedHours)
+            .average()
+            .orElse(1.5);
+
+        // Projects average
+        Double projectsAvg = projectRepository.findAll().stream()
+            .mapToDouble(p -> p.getEstimatedHours() != null ? p.getEstimatedHours() : 0.0)
+            .average()
+            .orElse(5.0);
+
+        return ServiceAnalyticsDetailedResponse.AverageDuration.builder()
+            .labels(Arrays.asList("Services", "Projects"))
+            .data(Arrays.asList(
+                Math.round(servicesAvg * 10.0) / 10.0,
+                Math.round(projectsAvg * 10.0) / 10.0
+            ))
+            .build();
+    }
+
+    // 4. Category Performance
+    private ServiceAnalyticsDetailedResponse.CategoryPerformance calculateCategoryPerformance() {
+        Map<String, List<Job>> jobsByCategory = jobRepository.findAll().stream()
+            .filter(job -> com.TenX.Automobile.enums.JobType.SERVICE.equals(job.getType()))
+            .collect(Collectors.groupingBy(job -> 
+                serviceRepository.findById(job.getTypeId())
+                    .map(com.TenX.Automobile.entity.Service::getCategory)
+                    .orElse("Other")
+            ));
+
+        List<String> labels = new ArrayList<>();
+        List<Integer> jobs = new ArrayList<>();
+        List<Integer> delays = new ArrayList<>();
+
+        jobsByCategory.forEach((category, categoryJobs) -> {
+            labels.add(category);
+            jobs.add(categoryJobs.size());
+            
+            // Count delays (jobs with status containing HOLD or DELAYED)
+            int delayCount = (int) categoryJobs.stream()
+                .filter(j -> j.getStatus() != null && 
+                    (j.getStatus().contains("HOLD") || j.getStatus().contains("DELAYED")))
+                .count();
+            delays.add(delayCount);
+        });
+
+        return ServiceAnalyticsDetailedResponse.CategoryPerformance.builder()
+            .labels(labels)
+            .jobs(jobs)
+            .delays(delays)
+            .build();
+    }
+
+    // 5. Brand Analytics
+    private ServiceAnalyticsDetailedResponse.BrandAnalytics calculateBrandAnalytics() {
+        Map<String, Long> brandCounts = vehicleRepository.findAll().stream()
+            .collect(Collectors.groupingBy(
+                v -> v.getBrandName() != null ? v.getBrandName() : "Unknown",
+                Collectors.counting()
+            ));
+
+        List<Map.Entry<String, Long>> sortedBrands = brandCounts.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(10)
+            .collect(Collectors.toList());
+
+        return ServiceAnalyticsDetailedResponse.BrandAnalytics.builder()
+            .labels(sortedBrands.stream().map(Map.Entry::getKey).collect(Collectors.toList()))
+            .data(sortedBrands.stream().map(e -> e.getValue().intValue()).collect(Collectors.toList()))
+            .build();
+    }
+
+    // 6. Job Timeliness
+    private ServiceAnalyticsDetailedResponse.JobTimeliness calculateJobTimeliness() {
+        List<Job> completedJobs = jobRepository.findAll().stream()
+            .filter(j -> "COMPLETED".equals(j.getStatus()))
+            .collect(Collectors.toList());
+
+        int onTime = 0;
+        int delayed = 0;
+
+        for (Job job : completedJobs) {
+            // Consider a job delayed if updated time is significantly after arriving time
+            if (job.getUpdatedAt() != null && job.getArrivingDate() != null) {
+                long daysBetween = java.time.Duration.between(job.getArrivingDate(), job.getUpdatedAt()).toDays();
+                if (daysBetween > 7) { // More than 7 days is considered delayed
+                    delayed++;
+                } else {
+                    onTime++;
+                }
+            }
+        }
+
+        return ServiceAnalyticsDetailedResponse.JobTimeliness.builder()
+            .labels(Arrays.asList("On-Time", "Delayed"))
+            .data(Arrays.asList(onTime, delayed))
+            .build();
+    }
+
+    // 7. Task Delays
+    private ServiceAnalyticsDetailedResponse.TaskDelays calculateTaskDelays() {
+        List<Task> delayedTasks = taskRepository.findAll().stream()
+            .filter(t -> t.getStatus() != null && 
+                (t.getStatus().contains("HOLD") || t.getStatus().contains("WAITING")))
+            .collect(Collectors.toList());
+
+        return ServiceAnalyticsDetailedResponse.TaskDelays.builder()
+            .totalDelayed(delayedTasks.size())
+            .breakdown(new ArrayList<>()) // Can add employee breakdown if needed
+            .build();
+    }
+
+    // 8. Project Analytics
+    private ServiceAnalyticsDetailedResponse.ProjectAnalytics calculateProjectAnalytics() {
+        List<Project> projects = projectRepository.findAll();
+        
+        List<String> labels = new ArrayList<>();
+        List<Double> estimated = new ArrayList<>();
+        List<Double> actual = new ArrayList<>();
+
+        projects.stream().limit(10).forEach(project -> {
+            labels.add(project.getTitle() != null ? project.getTitle() : "Project " + project.getProjectId());
+            estimated.add(project.getEstimatedHours() != null ? project.getEstimatedHours() : 0.0);
+            
+            // Calculate actual hours from tasks
+            Double actualHours = taskRepository.findAll().stream()
+                .filter(t -> project.getProjectId().equals(t.getProject() != null ? t.getProject().getProjectId() : null))
+                .mapToDouble(t -> t.getEstimatedHours() != null ? t.getEstimatedHours() : 0.0)
+                .sum();
+            actual.add(actualHours);
+        });
+
+        // Summary
+        int totalProjects = projects.size();
+        int pending = (int) projects.stream().filter(p -> "PENDING".equals(p.getStatus())).count();
+        int approved = (int) projects.stream().filter(p -> "APPROVED".equals(p.getStatus())).count();
+        int completed = (int) projects.stream().filter(p -> "COMPLETED".equals(p.getStatus())).count();
+        int inProgress = (int) projects.stream().filter(p -> "IN_PROGRESS".equals(p.getStatus())).count();
+        int waitingParts = (int) projects.stream().filter(p -> "WAITING_PARTS".equals(p.getStatus())).count();
+        int scheduled = (int) projects.stream().filter(p -> "SCHEDULED".equals(p.getStatus())).count();
+        int cancelled = (int) projects.stream().filter(p -> "CANCELLED".equals(p.getStatus())).count();
+        Double avgCost = projects.stream()
+            .mapToDouble(p -> p.getCost() != null ? p.getCost() : 0.0)
+            .average()
+            .orElse(0.0);
+
+        ServiceAnalyticsDetailedResponse.ProjectSummary summary = 
+            ServiceAnalyticsDetailedResponse.ProjectSummary.builder()
+                .totalProjects(totalProjects)
+                .pending(pending)
+                .approved(approved)
+                .completed(completed)
+                .inProgress(inProgress)
+                .waitingParts(waitingParts)
+                .scheduled(scheduled)
+                .cancelled(cancelled)
+                .averageCost(Math.round(avgCost * 100.0) / 100.0)
+                .build();
+
+        return ServiceAnalyticsDetailedResponse.ProjectAnalytics.builder()
+            .labels(labels)
+            .estimated(estimated)
+            .actual(actual)
+            .summary(summary)
+            .build();
     }
 
     // ==================== PAGE 5: AI INSIGHTS ====================

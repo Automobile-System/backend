@@ -439,6 +439,59 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getServicePerformance());
     }
 
+    /**
+     * Get detailed analytics (all charts data)
+     * GET /api/admin/services/analytics/detailed
+     */
+    @GetMapping("/services/analytics/detailed")
+    public ResponseEntity<ServiceAnalyticsDetailedResponse> getDetailedAnalytics() {
+        log.info("Getting detailed service analytics");
+        return ResponseEntity.ok(adminService.getDetailedServiceAnalytics());
+    }
+
+    /**
+     * Get all services list
+     * GET /api/admin/services
+     */
+    @GetMapping("/services")
+    public ResponseEntity<List<ServiceInfoResponse>> getAllServices() {
+        log.info("Getting all services");
+        return ResponseEntity.ok(adminService.getAllServices());
+    }
+
+    /**
+     * Create a new predefined service
+     * POST /api/admin/services
+     */
+    @PostMapping("/services")
+    public ResponseEntity<Map<String, Object>> createService(
+            @Valid @RequestBody CreateServiceRequest request) {
+        log.info("Creating new service: {}", request.getTitle());
+        return ResponseEntity.ok(adminService.createService(request));
+    }
+
+    /**
+     * Update a predefined service
+     * PUT /api/admin/services/{serviceId}
+     */
+    @PutMapping("/services/{serviceId}")
+    public ResponseEntity<Map<String, Object>> updateService(
+            @PathVariable Long serviceId,
+            @Valid @RequestBody UpdateServiceRequest request) {
+        log.info("Updating service: {}", serviceId);
+        return ResponseEntity.ok(adminService.updateService(serviceId, request));
+    }
+
+    /**
+     * Delete a predefined service
+     * DELETE /api/admin/services/{serviceId}
+     */
+    @DeleteMapping("/services/{serviceId}")
+    public ResponseEntity<Map<String, Object>> deleteService(@PathVariable Long serviceId) {
+        log.info("Deleting service: {}", serviceId);
+        return ResponseEntity.ok(adminService.deleteService(serviceId));
+    }
+
     // ==================== PAGE 5: AI INSIGHTS ====================
 
     /**
