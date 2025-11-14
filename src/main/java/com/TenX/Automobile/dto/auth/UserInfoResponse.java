@@ -31,11 +31,19 @@ public class UserInfoResponse {
     
     private String phoneNumber;
     
+    private String nationalId;
+    
+    private String profileImageUrl;
+    
     private Set<Role> roles;
     
     private LocalDateTime createdAt;
     
+    private LocalDateTime updatedAt;
+    
     private LocalDateTime lastLoginAt;
+    
+    private LocalDateTime lockedUntil;
     
     private boolean enabled;
     
@@ -44,4 +52,6 @@ public class UserInfoResponse {
     private boolean accountNonLocked;
     
     private boolean credentialsNonExpired;
+    
+    private int failedLoginAttempts;
 }

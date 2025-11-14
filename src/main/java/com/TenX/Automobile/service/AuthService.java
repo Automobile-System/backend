@@ -242,13 +242,76 @@ public class AuthService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
+                .nationalId(user.getNationalId())
+                .profileImageUrl(user.getProfileImageUrl())
                 .roles(user.getRoles())
                 .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .lastLoginAt(user.getLastLoginAt())
+                .lockedUntil(user.getLockedUntil())
                 .enabled(user.isEnabled())
                 .accountNonExpired(user.isAccountNonExpired())
                 .accountNonLocked(user.isAccountNonLocked())
                 .credentialsNonExpired(user.isCredentialsNonExpired())
+                .failedLoginAttempts(user.getFailedLoginAttempts())
+                .build();
+    }
+
+    /**
+     * Update current authenticated user's profile
+     */
+    @Transactional
+    public UserInfoResponse updateProfile(UpdateProfileRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserEntity)) {
+            throw new InvalidCredentialsException("User not authenticated");
+        }
+
+        UserEntity user = (UserEntity) authentication.getPrincipal();
+        
+        // Update only the fields that are provided
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getNationalId() != null) {
+            user.setNationalId(request.getNationalId());
+        }
+        if (request.getProfileImageUrl() != null) {
+            user.setProfileImageUrl(request.getProfileImageUrl());
+        }
+        
+        user.setUpdatedAt(LocalDateTime.now());
+        
+        // Save updated user
+        UserEntity updatedUser = userRepository.save(user);
+        
+        log.info("Profile updated for user: {}", updatedUser.getEmail());
+
+        return UserInfoResponse.builder()
+                .userId(updatedUser.getId().toString())
+                .email(updatedUser.getEmail())
+                .firstName(updatedUser.getFirstName())
+                .lastName(updatedUser.getLastName())
+                .phoneNumber(updatedUser.getPhoneNumber())
+                .nationalId(updatedUser.getNationalId())
+                .profileImageUrl(updatedUser.getProfileImageUrl())
+                .roles(updatedUser.getRoles())
+                .createdAt(updatedUser.getCreatedAt())
+                .updatedAt(updatedUser.getUpdatedAt())
+                .lastLoginAt(updatedUser.getLastLoginAt())
+                .lockedUntil(updatedUser.getLockedUntil())
+                .enabled(updatedUser.isEnabled())
+                .accountNonExpired(updatedUser.isAccountNonExpired())
+                .accountNonLocked(updatedUser.isAccountNonLocked())
+                .credentialsNonExpired(updatedUser.isCredentialsNonExpired())
+                .failedLoginAttempts(updatedUser.getFailedLoginAttempts())
                 .build();
     }
 

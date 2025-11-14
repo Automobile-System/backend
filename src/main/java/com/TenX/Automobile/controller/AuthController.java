@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -114,6 +115,22 @@ public class AuthController {
         
         UserInfoResponse response = authService.getCurrentUser();
         log.info("User info response - Roles: {}", response.getRoles());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update current user profile
+     * Updates authenticated user's profile information
+     * 
+     * @param request UpdateProfileRequest with fields to update
+     * @return UserInfoResponse with updated user information
+     */
+    @PutMapping("/profile")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserInfoResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        log.info("Update profile request received");
+        UserInfoResponse response = authService.updateProfile(request);
+        log.info("Profile updated successfully for user: {}", response.getEmail());
         return ResponseEntity.ok(response);
     }
 
