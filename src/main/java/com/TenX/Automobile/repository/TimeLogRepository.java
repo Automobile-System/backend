@@ -24,17 +24,17 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
      * Find all time logs for an employee via ManageAssignJob
      * Filters by date range if provided
      */
-    @Query("SELECT DISTINCT tl FROM TimeLog tl " +
-           "JOIN tl.job j " +
-           "JOIN ManageAssignJob maj ON maj.job.jobId = j.jobId " +
-           "WHERE maj.employee.id = :employeeId " +
-           "AND (:startDate IS NULL OR CAST(tl.startTime AS date) >= :startDate) " +
-           "AND (:endDate IS NULL OR CAST(tl.startTime AS date) <= :endDate) " +
-           "ORDER BY tl.startTime DESC")
+    @Query(value = "SELECT DISTINCT tl.* FROM time_log tl " +
+           "JOIN manage_assign_job maj ON maj.job_id = tl.job_id " +
+           "WHERE maj.employee_id = CAST(:employeeId AS uuid) " +
+           "AND (CAST(:startDate AS date) IS NULL OR CAST(tl.start_time AS date) >= CAST(:startDate AS date)) " +
+           "AND (CAST(:endDate AS date) IS NULL OR CAST(tl.start_time AS date) <= CAST(:endDate AS date)) " +
+           "ORDER BY tl.start_time DESC", 
+           nativeQuery = true)
     List<TimeLog> findTimeLogsByEmployeeIdAndDateRange(
-        @Param("employeeId") UUID employeeId,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
+        @Param("employeeId") String employeeId,
+        @Param("startDate") String startDate,
+        @Param("endDate") String endDate
     );
 
     /**
