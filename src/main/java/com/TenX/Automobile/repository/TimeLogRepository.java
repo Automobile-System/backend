@@ -80,4 +80,10 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
     @Modifying
     @Query("DELETE FROM TimeLog tl WHERE tl.employee = :employee")
     void deleteByEmployee(@Param("employee") Employee employee);
+
+    /**
+     * Find all time logs for a specific job and employee
+     */
+    @Query("SELECT tl FROM TimeLog tl WHERE tl.job.jobId = :jobId AND tl.employee.id = :employeeId")
+    List<TimeLog> findByJobIdAndEmployeeId(@Param("jobId") Long jobId, @Param("employeeId") UUID employeeId);
 }
