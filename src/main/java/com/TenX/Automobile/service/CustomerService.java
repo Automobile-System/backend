@@ -443,22 +443,31 @@ public class CustomerService {
     }
 
     /**
-     * Get detailed information about a specific service
+     * Get detailed information about a specific service job
      */
-    public ServiceDetailResponse getServiceDetails(String email, Long serviceId) {
-        log.info("Getting service details - email: {}, serviceId: {}", email, serviceId);
+    public ServiceDetailResponse getServiceDetails(String email, Long jobId) {
+        log.info("Getting service details - email: {}, jobId: {}", email, jobId);
 
         Customer customer = customerRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Customer not found with email: " + email));
 
-        // Find the service entity
-        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(serviceId)
-                .orElseThrow(() -> new RuntimeException("Service not found"));
+        // Find the job
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Job not found"));
 
-        // Find the job for this service and customer
-        Job job = jobRepository.findByTypeAndTypeId(JobType.SERVICE, serviceId)
-                .filter(j -> j.getVehicle() != null && customer.getId().equals(j.getVehicle().getCustomer().getId()))
-                .orElseThrow(() -> new RuntimeException("Service job not found or doesn't belong to customer"));
+        // Verify it's a service job
+        if (!JobType.SERVICE.equals(job.getType())) {
+            throw new RuntimeException("Job is not a service");
+        }
+
+        // Verify it belongs to the customer
+        if (!customer.getId().equals(job.getVehicle().getCustomer().getId())) {
+            throw new RuntimeException("Service doesn't belong to customer");
+        }
+
+        // Find the service entity
+        com.TenX.Automobile.model.entity.Service service = serviceRepository.findById(job.getTypeId())
+                .orElseThrow(() -> new RuntimeException("Service not found"));
 
         // Get time logs for assigned employees
         List<TimeLog> timeLogs = timeLogRepository.findByJobId(job.getJobId());
@@ -527,19 +536,45 @@ public class CustomerService {
         // Services don't have tasks - only projects have tasks
         List<ServiceDetailResponse.TaskInfo> taskInfos = Collections.emptyList();
 
-        // Map assigned employees from time logs
-        List<ServiceDetailResponse.EmployeeInfo> employeeInfos = timeLogs.stream()
-                .map(timeLog -> ServiceDetailResponse.EmployeeInfo.builder()
-                        .employeeId(timeLog.getEmployee().getEmployeeId())
-                        .firstName(timeLog.getEmployee().getFirstName())
-                        .lastName(timeLog.getEmployee().getLastName())
-                        .specialty(timeLog.getEmployee().getSpecialty())
-                        .hoursWorked(timeLog.getHoursWorked())
-                        .workDescription(timeLog.getDescription())
-                        .startTime(timeLog.getStartTime())
-                        .endTime(timeLog.getEndTime())
-                        .build())
-                .collect(Collectors.toList());
+        // Map assigned employees from manage_assign_job and their time logs
+        List<ServiceDetailResponse.EmployeeInfo> employeeInfos = new ArrayList<>();
+        
+        // Get employee assignment
+        Optional<ManageAssignJob> assignmentOpt = manageAssignJobRepository.findByJob_JobId(job.getJobId());
+        if (assignmentOpt.isPresent()) {
+            Employee employee = assignmentOpt.get().getEmployee();
+            
+            // Get time logs for this specific employee
+            List<TimeLog> employeeTimeLogs = timeLogs.stream()
+                    .filter(tl -> tl.getEmployee().getId().equals(employee.getId()))
+                    .collect(Collectors.toList());
+            
+            // Calculate total hours worked
+            double totalHours = employeeTimeLogs.stream()
+                    .mapToDouble(TimeLog::getHoursWorked)
+                    .sum();
+            
+            // Get work descriptions
+            String workDescription = employeeTimeLogs.stream()
+                    .map(TimeLog::getDescription)
+                    .filter(desc -> desc != null && !desc.isEmpty())
+                    .collect(Collectors.joining("; "));
+            
+            // Get latest time log for start/end times
+            TimeLog latestLog = employeeTimeLogs.isEmpty() ? null : 
+                    employeeTimeLogs.get(employeeTimeLogs.size() - 1);
+            
+            employeeInfos.add(ServiceDetailResponse.EmployeeInfo.builder()
+                    .employeeId(employee.getEmployeeId())
+                    .firstName(employee.getFirstName())
+                    .lastName(employee.getLastName())
+                    .specialty(employee.getSpecialty())
+                    .hoursWorked(totalHours > 0 ? totalHours : null)
+                    .workDescription(workDescription.isEmpty() ? null : workDescription)
+                    .startTime(latestLog != null ? latestLog.getStartTime() : null)
+                    .endTime(latestLog != null ? latestLog.getEndTime() : null)
+                    .build());
+        }
 
         return ServiceDetailResponse.builder()
                 .serviceId(job.getJobId())
