@@ -1,7 +1,8 @@
 package com.TenX.Automobile.service;
 
 import com.TenX.Automobile.model.dto.request.CreateProjectRequest;
-import com.TenX.Automobile.model.dto.request.CreateTaskRequest;
+import com.TenX.Automobile.model.dto.request.CreateServiceRequest;
+import com.TenX.Automobile.model.dto.request.CreateSubTaskRequest;
 import com.TenX.Automobile.model.dto.request.UpdateEmployeeStatusRequest;
 import com.TenX.Automobile.model.dto.request.UpdateScheduleRequest;
 import com.TenX.Automobile.model.dto.response.*;
@@ -194,80 +195,76 @@ public class ManagerDashboardService {
     }
 
     // 3. Task & Project Management
-    public Map<String, Object> createTask(CreateTaskRequest request) {
-        // Find or create customer
-        Customer customer = customerRepository.findAll().stream()
-            .filter(c -> c.getPhoneNumber() != null && c.getPhoneNumber().equals(request.getContactNumber()))
-            .findFirst()
-            .orElseGet(() -> {
-                String email = request.getCustomerName().toLowerCase().replace(" ", ".") + "@example.com";
-                Customer newCustomer = Customer.builder()
-                    .customerId("CUST" + System.currentTimeMillis())
-                    .email(email)
-                    .firstName(request.getCustomerName().split(" ")[0])
-                    .lastName(request.getCustomerName().split(" ").length > 1 ? 
-                        request.getCustomerName().split(" ")[1] : "")
-                    .phoneNumber(request.getContactNumber())
-                    .password(passwordEncoder.encode("TempPassword123!"))
-                    .enabled(true)
-                    .build();
-                newCustomer.addRole(Role.CUSTOMER);
-                return customerRepository.save(newCustomer);
-            });
-        
-        // Find or create vehicle
-        Vehicle vehicle = vehicleRepository.findAll().stream()
-            .filter(v -> v.getRegistration_No().equals(request.getVehicleRegistration()))
-            .findFirst()
-            .orElseGet(() -> {
-                String[] modelParts = request.getVehicleModel().split(" ");
-                Vehicle newVehicle = Vehicle.builder()
-                    .registration_No(request.getVehicleRegistration())
-                    .brandName(modelParts.length > 0 ? modelParts[0] : "Unknown")
-                    .model(request.getVehicleModel())
-                    .customer(customer)
-                    .build();
-                return vehicleRepository.save(newVehicle);
-            });
-        
-        // Create service
-        com.TenX.Automobile.model.entity.Service service = new com.TenX.Automobile.model.entity.Service();
-        service.setTitle(request.getServiceType());
-        service.setDescription(request.getServiceNotes());
-        service.setEstimatedHours(request.getEstimatedDurationHours());
-        service.setCost(request.getEstimatedPrice() != null ? request.getEstimatedPrice().doubleValue() : 0.0);
-        service = serviceRepository.save(service);
-        
-        // Create Job for this service
-        Job job = new Job();
-        job.setServiceType(service); // This sets type=SERVICE and typeId=serviceId
-        job.setVehicle(vehicle);
-        job.setStatus("PENDING");
-        job.setArrivingDate(request.getPreferredDate() != null && request.getPreferredTime() != null ?
-            LocalDateTime.of(request.getPreferredDate(), request.getPreferredTime()) :
-            LocalDateTime.now().plusDays(1));
-        job.setCost(request.getEstimatedPrice() != null ? java.math.BigDecimal.valueOf(request.getEstimatedPrice().doubleValue()) : java.math.BigDecimal.ZERO);
-        job = jobRepository.save(job);
-        
-        // Assign to employee if provided
-        if (request.getAssignedEmployeeId() != null) {
-            Employee employee = employeeRepository.findById(request.getAssignedEmployeeId())
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-            Employee manager = employeeRepository.findByRole(Role.MANAGER).stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("Manager not found"));
-            
-            ManageAssignJob assignment = ManageAssignJob.builder()
-                .job(job)
-                .employee(employee)
-                .manager(manager)
-                .build();
-            manageAssignJobRepository.save(assignment);
+    public Map<String, Object> createSubTask(CreateSubTaskRequest request) {
+        Project project = projectRepository.findById(request.getProjectId())
+            .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        String status = Optional.ofNullable(request.getStatus()).filter(s -> !s.isBlank()).orElse("PENDING");
+
+        Task task = Task.builder()
+            .taskTitle(request.getTitle())
+            .taskDescription(request.getDescription())
+            .status(status)
+            .estimatedHours(request.getEstimatedHours())
+            .project(project)
+            .build();
+
+        project.addTask(task);
+
+        if (request.getEstimatedHours() != null) {
+            double updatedHours = Optional.ofNullable(project.getEstimatedHours()).orElse(0.0)
+                + request.getEstimatedHours();
+            project.setEstimatedHours(updatedHours);
         }
-        
+
+        projectRepository.save(project);
+
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Task created and added to schedule successfully.");
-        response.put("taskId", "task" + job.getJobId());
+        response.put("message", "Subtask created successfully.");
+        response.put("taskId", task.getTId());
+        response.put("projectId", project.getProjectId());
         return response;
+    }
+
+    public Map<String, Object> createService(CreateServiceRequest request) {
+        Optional<com.TenX.Automobile.model.entity.Service> existing = serviceRepository.findByTitleContainingIgnoreCase(request.getTitle()).stream()
+            .filter(service -> service.getTitle() != null && service.getTitle().equalsIgnoreCase(request.getTitle()))
+            .findFirst();
+        if (existing.isPresent()) {
+            throw new RuntimeException("Service with the same title already exists");
+        }
+
+        com.TenX.Automobile.model.entity.Service service = com.TenX.Automobile.model.entity.Service.builder()
+            .title(request.getTitle())
+            .description(request.getDescription())
+            .category(request.getCategory())
+            .imageUrl(request.getImageUrl())
+            .estimatedHours(request.getEstimatedHours())
+            .cost(request.getCost())
+            .build();
+
+        service = serviceRepository.save(service);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Service created successfully.");
+        response.put("serviceId", service.getServiceId());
+        return response;
+    }
+
+    public List<ServiceResponse> getServices() {
+        return serviceRepository.findAll().stream()
+            .map(service -> ServiceResponse.builder()
+                .serviceId(service.getServiceId())
+                .title(service.getTitle())
+                .description(service.getDescription())
+                .category(service.getCategory())
+                .imageUrl(service.getImageUrl())
+                .estimatedHours(service.getEstimatedHours())
+                .cost(service.getCost())
+                .createdAt(service.getCreatedAt())
+                .updatedAt(service.getUpdatedAt())
+                .build())
+            .collect(Collectors.toList());
     }
 
     public Map<String, Object> createProject(CreateProjectRequest request) {
@@ -359,27 +356,88 @@ public class ManagerDashboardService {
                 .map(p -> {
                     String customerName = "N/A";
                     Long jobId = null;
-                    
-                    // Find the Job associated with this project to get customer info
+                    ProjectBoardResponse.CustomerInfo customerDetails = null;
+                    ProjectBoardResponse.VehicleInfo vehicleInfo = null;
+                    ProjectBoardResponse.JobInfo jobInfo = null;
+
                     Optional<Job> jobOpt = jobRepository.findByTypeAndTypeId(JobType.PROJECT, p.getProjectId());
                     if (jobOpt.isPresent()) {
                         Job job = jobOpt.get();
                         jobId = job.getJobId();
+                        jobInfo = ProjectBoardResponse.JobInfo.builder()
+                            .jobId(job.getJobId())
+                            .type(job.getType() != null ? job.getType().name() : null)
+                            .typeId(job.getTypeId())
+                            .status(job.getStatus())
+                            .arrivingDate(job.getArrivingDate())
+                            .completionDate(job.getCompletionDate())
+                            .cost(job.getCost())
+                            .createdAt(job.getCreatedAt())
+                            .updatedAt(job.getUpdatedAt())
+                            .build();
+
                         Vehicle vehicle = job.getVehicle();
-                        if (vehicle != null && vehicle.getCustomer() != null) {
+                        if (vehicle != null) {
+                            vehicleInfo = ProjectBoardResponse.VehicleInfo.builder()
+                                .vehicleId(vehicle.getV_Id())
+                                .registrationNumber(vehicle.getRegistration_No())
+                                .brandName(vehicle.getBrandName())
+                                .model(vehicle.getModel())
+                                .capacity(vehicle.getCapacity())
+                                .createdBy(vehicle.getCreatedBy())
+                                .build();
+
                             Customer customer = vehicle.getCustomer();
-                            customerName = customer.getFirstName() + " " + customer.getLastName();
+                            if (customer != null) {
+                                String firstName = Optional.ofNullable(customer.getFirstName()).orElse("").trim();
+                                String lastName = Optional.ofNullable(customer.getLastName()).orElse("").trim();
+                                String fullName = (firstName + " " + lastName).trim();
+                                customerName = fullName.isEmpty() ? "N/A" : fullName;
+                                customerDetails = ProjectBoardResponse.CustomerInfo.builder()
+                                    .id(customer.getId())
+                                    .customerId(customer.getCustomerId())
+                                    .firstName(customer.getFirstName())
+                                    .lastName(customer.getLastName())
+                                    .email(customer.getEmail())
+                                    .phoneNumber(customer.getPhoneNumber())
+                                    .build();
+                            }
                         }
                     }
-                    
+
+                    List<Task> tasks = Optional.ofNullable(p.getTasks()).orElse(Collections.emptyList());
+                    List<ProjectBoardResponse.TaskSummary> taskSummaries = tasks.stream()
+                        .map(task -> ProjectBoardResponse.TaskSummary.builder()
+                            .taskId(task.getTId())
+                            .title(task.getTaskTitle())
+                            .description(task.getTaskDescription())
+                            .status(task.getStatus())
+                            .estimatedHours(task.getEstimatedHours())
+                            .completedAt(task.getCompletedAt())
+                            .createdAt(task.getCreatedAt())
+                            .updatedAt(task.getUpdatedAt())
+                            .build())
+                        .collect(Collectors.toList());
+
                     return ProjectBoardResponse.ProjectSummary.builder()
                         .id("proj" + (jobId != null ? jobId : p.getProjectId()))
+                        .projectId(p.getProjectId())
                         .title(p.getTitle())
+                        .description(p.getDescription())
+                        .estimatedHours(p.getEstimatedHours())
+                        .cost(p.getCost())
                         .customer(customerName)
+                        .status(p.getStatus() != null ? p.getStatus() : entry.getKey())
+                        .createdAt(p.getCreatedAt())
+                        .updatedAt(p.getUpdatedAt())
+                        .customerDetails(customerDetails)
+                        .vehicle(vehicleInfo)
+                        .job(jobInfo)
+                        .tasks(taskSummaries)
                         .build();
                 })
                 .collect(Collectors.toList());
-            
+
             result.add(ProjectBoardResponse.builder()
                 .status(entry.getKey())
                 .projects(summaries)

@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ServiceResponse {
-    
     private Long serviceId;
     private String title;
     private String description;
