@@ -13,20 +13,31 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ServiceListResponse {
-    private Long serviceId;
+public class ProjectListResponse {
+    
+    private Long projectId;
+    private Long jobId;
     private String title;
     private String description;
-    private String category;
-    private String status;
+    private String status; // Job status: PENDING, IN_PROGRESS, COMPLETED
+    private String projectStatus; // Project status
     private LocalDateTime arrivingDate;
+    private LocalDateTime completionDate;
     private BigDecimal cost;
     private Double estimatedHours;
+    
+    // Vehicle information
     private String vehicleRegistration;
     private String vehicleBrand;
     private String vehicleModel;
+    
+    // Assigned employees summary
     private List<AssignedEmployeeSummary> assignedEmployees;
+    private Integer totalTasks;
+    private Integer completedTasks;
+    
     private LocalDateTime bookedAt;
+    private LocalDateTime updatedAt;
     
     @Data
     @NoArgsConstructor
