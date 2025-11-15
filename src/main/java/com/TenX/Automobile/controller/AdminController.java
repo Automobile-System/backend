@@ -379,6 +379,26 @@ public class AdminController {
         return ResponseEntity.ok(adminService.activateManager(id));
     }
 
+    /**
+     * Delete manager
+     * DELETE /api/admin/workforce/managers/{id}
+     */
+    @DeleteMapping("/workforce/managers/{id}")
+    public ResponseEntity<Map<String, Object>> deleteManager(@PathVariable String id) {
+        log.info("Deleting manager: {}", id);
+        return ResponseEntity.ok(adminService.deleteManager(id));
+    }
+
+    /**
+     * Delete employee
+     * DELETE /api/admin/workforce/employees/{id}
+     */
+    @DeleteMapping("/workforce/employees/{id}")
+    public ResponseEntity<Map<String, Object>> deleteEmployee(@PathVariable String id) {
+        log.info("Deleting employee: {}", id);
+        return ResponseEntity.ok(adminService.deleteEmployee(id));
+    }
+
     // ==================== PAGE 4: SERVICES ANALYTICS ====================
 
     /**

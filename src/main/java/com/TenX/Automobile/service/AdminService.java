@@ -1044,6 +1044,44 @@ public class AdminService {
         return response;
     }
 
+    public Map<String, Object> deleteManager(String managerId) {
+        Employee manager = employeeRepository.findByEmployeeId(managerId)
+            .orElseThrow(() -> new RuntimeException("Manager not found"));
+
+        if (!manager.getRoles().contains(Role.MANAGER)) {
+            throw new RuntimeException("Employee is not a manager");
+        }
+
+        // Use the helper method to delete all related data
+        deleteUserRelatedData(manager, "manager", managerId);
+        
+        // Finally, delete the manager
+        employeeRepository.delete(manager);
+        log.info("Successfully deleted manager: {}", managerId);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Manager " + managerId + " has been permanently deleted from the system.");
+        return response;
+    }
+
+    public Map<String, Object> deleteEmployee(String employeeId) {
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+            .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        // Use the helper method to delete all related data
+        deleteUserRelatedData(employee, "employee", employeeId);
+        
+        // Finally, delete the employee
+        employeeRepository.delete(employee);
+        log.info("Successfully deleted employee: {}", employeeId);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Employee " + employeeId + " has been permanently deleted from the system.");
+        return response;
+    }
+
     // ==================== PAGE 4: SERVICES ANALYTICS ====================
 
     public ServicesAnalyticsResponse getServicesAnalytics() {
